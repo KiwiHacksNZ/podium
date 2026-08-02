@@ -47,6 +47,9 @@ services:
       - --proxy-headers
       - --forwarded-allow-ips
       - "*"
+      # one worker saturates a single core at ~87 rps; the box has 8
+      - --workers
+      - "4"
     ports:
       - "127.0.0.1:8001:8000"
     depends_on:
