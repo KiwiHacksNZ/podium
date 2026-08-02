@@ -29,15 +29,6 @@
   position: relative;
 }
 
-[data-theme="nova"] body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(circle at 50% 0%, rgba(255, 94, 160, 0.1), transparent 42%);
-}
-
 [data-theme="nova"] body > * {
   position: relative;
   z-index: 1;
@@ -72,12 +63,6 @@
 
 [data-theme="nova"] #sidebar-ui {
   background-color: var(--nv-bg-alt);
-  background-image: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.03) 0%,
-    rgba(255, 255, 255, 0.01) 28%,
-    transparent 55%
-  );
   border-right: var(--nv-border);
 }
 
@@ -305,7 +290,7 @@
 }
 
 [data-theme="nova"] .official-event-card {
-  background: linear-gradient(135deg, rgba(255, 94, 160, 0.15) 0%, rgba(79, 70, 229, 0.15) 100%);
+  background: var(--nv-primary-wash);
   border: var(--nv-border);
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
