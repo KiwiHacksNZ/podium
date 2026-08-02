@@ -1,0 +1,365 @@
+/* Nova theme layer.
+   Matches nova.kiwihacks.org visual language: deep space blue, bright pink accents, glassmorphism. */
+
+[data-theme="nova"] {
+  --nv-ink: #ffffff;
+  --nv-ink-soft: rgba(255, 255, 255, 0.75);
+  --nv-primary: #4f46e5;
+  --nv-primary-hover: #5b52ee;
+  --nv-primary-wash: rgba(79, 70, 229, 0.16);
+  --nv-accent: #ff5ea0;
+  --nv-accent-soft: rgba(255, 94, 160, 0.2);
+  --nv-accent-bright: #ff7ab3;
+  --nv-bg: #161a3d;
+  --nv-bg-alt: #0c1030;
+  --nv-paper: rgba(255, 255, 255, 0.05);
+  --nv-border: 1px solid rgba(255, 255, 255, 0.1);
+  --nv-radius: 16px;
+}
+
+[data-theme="nova"] html,
+[data-theme="nova"] body {
+  min-height: 100vh;
+  font-family: "Figtree", "Phantom Sans", sans-serif;
+  color: var(--nv-ink);
+}
+
+[data-theme="nova"] body {
+  background: var(--nv-bg);
+  position: relative;
+}
+
+[data-theme="nova"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(255, 94, 160, 0.1), transparent 42%);
+}
+
+[data-theme="nova"] body > * {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme="nova"] #landing,
+[data-theme="nova"] #home {
+  background: transparent;
+}
+
+[data-theme="nova"] #landing-navbar,
+[data-theme="nova"] #home-navbar {
+  background-color: rgba(22, 26, 61, 0.8) !important;
+  backdrop-filter: blur(12px);
+  border-bottom: var(--nv-border);
+  margin: 0;
+}
+
+[data-theme="nova"] #landing-navbar .btn,
+[data-theme="nova"] #home-navbar .btn {
+  color: var(--nv-ink);
+}
+
+[data-theme="nova"] #landing-content {
+  max-width: min(1200px, 100%);
+  margin: 1.5rem auto 2rem;
+  padding: 1.2rem 1rem 2.5rem;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+[data-theme="nova"] #sidebar-ui {
+  background-color: var(--nv-bg-alt);
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.01) 28%,
+    transparent 55%
+  );
+  border-right: var(--nv-border);
+}
+
+[data-theme="nova"] #sidebar-top {
+  border-bottom: var(--nv-border);
+}
+
+[data-theme="nova"] #sidebar-top .sidebar-brand-link {
+  display: inline-flex;
+  align-items: flex-start;
+  text-decoration: none;
+}
+
+[data-theme="nova"] #sidebar-top .sidebar-brand-logo {
+  height: 3.2rem;
+  margin-left: -0.35rem;
+}
+
+[data-theme="nova"] #sidebar-top .sidebar-brand-subtitle {
+  margin: 0;
+}
+
+[data-theme="nova"] #sidebar-top span,
+[data-theme="nova"] #sidebar-top p {
+  color: var(--nv-ink);
+}
+
+[data-theme="nova"] #sidebar-settings .sidebar-settings-trigger {
+  border: var(--nv-border);
+  border-radius: 1.35rem;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="nova"] #sidebar-settings .sidebar-settings-trigger:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="nova"] #sidebar-settings .sidebar-settings-popout {
+  border: var(--nv-border);
+  border-radius: 1.35rem;
+  background: #1e2454;
+}
+
+[data-theme="nova"] #sidebar-settings .sidebar-settings-heading {
+  font-family: "ABeeZee", "Figtree", sans-serif;
+  letter-spacing: 0.01em;
+}
+
+[data-theme="nova"] #sidebar-settings .sidebar-settings-meta {
+  color: var(--nv-ink-soft);
+}
+
+[data-theme="nova"] #sidebar-settings .sidebar-settings-meta strong {
+  color: var(--nv-ink);
+}
+
+[data-theme="nova"] #sidebar-settings .sidebar-settings-section + .sidebar-settings-section {
+  border-top: var(--nv-border);
+}
+
+[data-theme="nova"] #sidebar-settings .sidebar-settings-name {
+  font-family: "ABeeZee", "Figtree", sans-serif;
+  letter-spacing: 0.01em;
+}
+
+[data-theme="nova"] #sidebar-settings .sidebar-settings-email {
+  font-family: "Source Code Pro", monospace;
+  opacity: 0.82;
+}
+
+[data-theme="nova"] #sidebar-settings .sidebar-settings-pill {
+  border: var(--nv-border);
+  border-radius: 1.05rem;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="nova"] #sidebar-settings #theme-switcher .btn {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="nova"] #sidebar :not(#sidebar-top) a {
+  border-radius: 12px;
+}
+
+[data-theme="nova"] #sidebar :not(#sidebar-top) a:not(.bg-primary):hover {
+  background: var(--nv-primary-wash);
+}
+
+[data-theme="nova"] #sidebar :not(#sidebar-top) a.bg-primary {
+  color: #ffffff !important;
+  background: var(--nv-primary) !important;
+  border: transparent;
+}
+
+[data-theme="nova"] .card,
+[data-theme="nova"] .modal-box,
+[data-theme="nova"] .fieldset,
+[data-theme="nova"] .collapse {
+  border: var(--nv-border);
+  border-radius: var(--nv-radius);
+  background: var(--nv-paper);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="nova"] .btn {
+  font-family: "ABeeZee", "Figtree", sans-serif;
+  font-weight: 600;
+  border: transparent;
+  border-radius: var(--nv-radius);
+  color: var(--nv-ink);
+  transition: background-color 180ms ease, box-shadow 180ms ease, transform 160ms ease;
+}
+
+[data-theme="nova"] .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="nova"] .btn-primary {
+  background: var(--nv-primary) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="nova"] .btn-primary:hover {
+  background: var(--nv-primary-hover) !important;
+}
+
+[data-theme="nova"] .btn-secondary,
+[data-theme="nova"] .btn-info {
+  background: var(--nv-accent) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="nova"] .btn-secondary:hover,
+[data-theme="nova"] .btn-info:hover {
+  background: var(--nv-accent-bright) !important;
+}
+
+[data-theme="nova"] .btn-outline {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: var(--nv-border) !important;
+  color: var(--nv-ink) !important;
+}
+
+[data-theme="nova"] .btn-ghost {
+  border-color: transparent;
+  background: transparent !important;
+}
+
+[data-theme="nova"] .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="nova"] .input,
+[data-theme="nova"] textarea,
+[data-theme="nova"] select,
+[data-theme="nova"] input[type="text"],
+[data-theme="nova"] input[type="email"],
+[data-theme="nova"] input[type="password"],
+[data-theme="nova"] input[type="date"],
+[data-theme="nova"] input[type="tel"] {
+  background: rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: var(--nv-ink) !important;
+  border-radius: 13px !important;
+}
+
+[data-theme="nova"] .input:focus,
+[data-theme="nova"] textarea:focus,
+[data-theme="nova"] select:focus {
+  border-color: var(--nv-accent) !important;
+  box-shadow: 0 0 0 3px var(--nv-accent-soft);
+  outline: none;
+}
+
+[data-theme="nova"] .badge {
+  border: var(--nv-border);
+  color: var(--nv-ink);
+  background: rgba(255, 255, 255, 0.15);
+  min-height: 1.95rem;
+  padding: 0.34rem 0.75rem;
+  line-height: 1.1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-theme="nova"] .badge-success {
+  background: rgba(79, 70, 229, 0.8);
+}
+
+[data-theme="nova"] .badge-warning {
+  background: rgba(255, 94, 160, 0.8);
+}
+
+[data-theme="nova"] .badge-info {
+  background: rgba(255, 122, 179, 0.8);
+}
+
+[data-theme="nova"] h1,
+[data-theme="nova"] h2,
+[data-theme="nova"] h3,
+[data-theme="nova"] h4 {
+  color: var(--nv-ink);
+  font-family: "ABeeZee", "Figtree", sans-serif;
+  letter-spacing: 0.01em;
+}
+
+[data-theme="nova"] .mono {
+  font-family: "Source Code Pro", monospace;
+}
+
+[data-theme="nova"] .table th {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--nv-ink-soft);
+}
+
+[data-theme="nova"] .table tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="nova"] .official-events-divider {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="nova"] .official-event-card {
+  background: linear-gradient(135deg, rgba(255, 94, 160, 0.15) 0%, rgba(79, 70, 229, 0.15) 100%);
+  border: var(--nv-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="nova"] .official-event-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(255, 94, 160, 0.2);
+}
+
+[data-theme="nova"] .official-event-hero {
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+[data-theme="nova"] .official-event-view {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+[data-theme="nova"] #theme-switcher .btn {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+  [data-theme="nova"] #landing-content {
+    margin-top: 0.8rem;
+    padding-left: 0.2rem;
+    padding-right: 0.2rem;
+  }
+
+  [data-theme="nova"] #sidebar {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+  }
+
+  [data-theme="nova"] #sidebar .drawer-overlay {
+    background-color: rgba(0, 0, 0, 0.6);
+  }
+
+  [data-theme="nova"] #sidebar-ui {
+    width: min(88vw, 340px);
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow-y: auto;
+    background-color: var(--nv-bg);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  [data-theme="nova"] #sidebar-settings .sidebar-settings-popout,
+  [data-theme="nova"] #sidebar-settings .sidebar-settings-trigger {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}

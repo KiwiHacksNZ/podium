@@ -1,19 +1,48 @@
 @import url("https://fonts.googleapis.com/css2?family=ABeeZee:ital@0;1&family=Figtree:wght@400;500;600;700;800&family=Source+Code+Pro:wght@500;700&display=swap");
 @import "tailwindcss";
 @import "./kiwihacks.css";
+@import "./nova.css";
 
 @plugin '@tailwindcss/typography';
 
 @plugin "daisyui" {
   themes:
-    kiwihacks,
-    catppuccin-latte,
-    catppuccin-mocha;
+    nova,
+    kiwihacks;
+}
+
+@plugin "daisyui/theme" {
+  name: "nova";
+  default: true;
+  prefersdark: true;
+  --color-base-100: #161a3d;
+  --color-base-200: #0c1030;
+  --color-base-300: #1e2454;
+  --color-base-content: #ffffff;
+  --color-primary: #4f46e5;
+  --color-primary-content: #ffffff;
+  --color-secondary: #ff5ea0;
+  --color-secondary-content: #ffffff;
+  --color-accent: #ff7ab3;
+  --color-accent-content: #ffffff;
+  --color-neutral: #1a1e4a;
+  --color-neutral-content: #ffffff;
+  --color-info: #36c6fb;
+  --color-info-content: #ffffff;
+  --color-success: #4f46e5;
+  --color-success-content: #ffffff;
+  --color-warning: #ff5ea0;
+  --color-warning-content: #ffffff;
+  --color-error: #ff3366;
+  --color-error-content: #ffffff;
+  --radius-selector: 1rem;
+  --radius-field: 1rem;
+  --radius-box: 1rem;
 }
 
 @plugin "daisyui/theme" {
   name: "kiwihacks";
-  default: true;
+  default: false;
   prefersdark: false;
   --color-base-100: #f2f1ee;
   --color-base-200: #eae6e2;
@@ -37,64 +66,6 @@
   --color-error-content: #fff2f2;
   --radius-selector: 0.9rem;
   --radius-field: 0.9rem;
-  --radius-box: 1rem;
-}
-
-@plugin "daisyui/theme" {
-  name: "catppuccin-latte";
-  default: false;
-  prefersdark: false;
-  --color-base-100: #eff1f5;
-  --color-base-200: #e6e9ef;
-  --color-base-300: #dce0e8;
-  --color-base-content: #4c4f69;
-  --color-primary: #1e66f5;
-  --color-primary-content: #eff1f5;
-  --color-secondary: #8839ef;
-  --color-secondary-content: #eff1f5;
-  --color-accent: #179299;
-  --color-accent-content: #eff1f5;
-  --color-neutral: #5c5f77;
-  --color-neutral-content: #eff1f5;
-  --color-info: #04a5e5;
-  --color-info-content: #eff1f5;
-  --color-success: #40a02b;
-  --color-success-content: #eff1f5;
-  --color-warning: #df8e1d;
-  --color-warning-content: #2c1600;
-  --color-error: #d20f39;
-  --color-error-content: #fff1f2;
-  --radius-selector: 0.75rem;
-  --radius-field: 0.75rem;
-  --radius-box: 1rem;
-}
-
-@plugin "daisyui/theme" {
-  name: "catppuccin-mocha";
-  default: false;
-  prefersdark: false;
-  --color-base-100: #1e1e2e;
-  --color-base-200: #181825;
-  --color-base-300: #11111b;
-  --color-base-content: #cdd6f4;
-  --color-primary: #89b4fa;
-  --color-primary-content: #1e1e2e;
-  --color-secondary: #cba6f7;
-  --color-secondary-content: #1e1e2e;
-  --color-accent: #94e2d5;
-  --color-accent-content: #11111b;
-  --color-neutral: #313244;
-  --color-neutral-content: #cdd6f4;
-  --color-info: #89dceb;
-  --color-info-content: #11111b;
-  --color-success: #a6e3a1;
-  --color-success-content: #11111b;
-  --color-warning: #f9e2af;
-  --color-warning-content: #2c2416;
-  --color-error: #f38ba8;
-  --color-error-content: #11111b;
-  --radius-selector: 0.75rem;
-  --radius-field: 0.75rem;
   --radius-box: 1rem;
 }
 

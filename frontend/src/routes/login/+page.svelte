@@ -23,6 +23,7 @@
 
   let isVerifying = $state(false);
   let showSignupFields = $state(false);
+  let showEmailLogin = $state(false);
   let expandedDueTo = "";
   const hackClubSsoEnabled = $derived(
     Boolean(env.PUBLIC_SSO_CLIENT_ID || env.PUBLIC_HACKCLUB_CLIENT_ID),
@@ -214,15 +215,29 @@
     {#if hackClubSsoEnabled}
       <a
         href="{env.PUBLIC_API_URL}/auth/sso"
-        class="btn w-full mb-1 gap-2"
-        style="background-color: #ec3750; color: white; border-color: #ec3750;"
+        class="btn btn-lg w-full mb-2 gap-2"
+        style="background-color: #132f1e; color: #eae6e2; border-color: #132f1e;"
       >
-        <img src="/favicon.svg" alt="KiwiHacks" class="w-5 h-5" />
+        <img src="/kiwihacks-logo.png" alt="KiwiHacks" class="w-6 h-6" />
         Sign in with KiwiHacks
       </a>
-      <div class="divider my-2">or use email</div>
+      <p class="text-center text-sm text-base-content/60 mb-1">
+        One account for everything KiwiHacks.
+      </p>
+      {#if !showEmailLogin}
+        <button
+          type="button"
+          class="btn btn-link btn-xs w-full text-base-content/50"
+          onclick={() => (showEmailLogin = true)}
+        >
+          or continue with email
+        </button>
+      {:else}
+        <div class="divider my-2">or use email</div>
+      {/if}
     {/if}
 
+    {#if showEmailLogin || !hackClubSsoEnabled}
     <fieldset
       class="fieldset bg-base-200 border-base-300 rounded-box border p-4"
     >
@@ -390,6 +405,7 @@
         </button>
       </div>
     </fieldset>
+    {/if}
 
   {/if}
   <div class="text-center mt-4">

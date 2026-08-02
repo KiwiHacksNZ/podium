@@ -12,12 +12,11 @@ const createDaisyUIThemes = (
     .join(", ");
 };
 export const themes = [
+  "nova",
   "kiwihacks",
-  "catppuccin-latte",
-  "catppuccin-mocha",
 ];
 export const lightTheme = "kiwihacks";
-export const darkTheme = "catppuccin-mocha";
+export const darkTheme = "nova";
 export const daisyUIThemes = createDaisyUIThemes(darkTheme, lightTheme, themes);
 
 export const loadingTextOptions = [

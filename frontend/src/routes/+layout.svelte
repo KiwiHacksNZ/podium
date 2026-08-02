@@ -191,7 +191,7 @@
         </div>
         <div class="flex-1">
           <a href="/" class="flex items-center gap-2 btn btn-ghost px-2">
-            <img src="https://kiwihacks.org/assets/kiwihackstext-494RwoFq.png" alt="KiwiHacks Podium" class="h-6 w-auto" />
+            <img src="https://nova.kiwihacks.org/nova-logo.png" alt="Nova Podium" class="h-6 w-auto" />
           </a>
         </div>
       </div>
@@ -221,12 +221,12 @@
         <div class="p-6 border-b border-base-300" id="sidebar-top">
           <a href="/" class="sidebar-brand-link flex flex-col gap-1">
             <img
-              src="/assets/kiwihacks/kiwi-text.png"
-              alt="KiwiHacks"
+              src="https://nova.kiwihacks.org/nova-logo.png"
+              alt="Nova"
               class="sidebar-brand-logo h-8 w-auto"
             />
             <p class="sidebar-brand-subtitle text-base-content/70 text-sm">
-              KiwiHacks Podium
+              Nova Podium
             </p>
           </a>
         </div>
@@ -335,18 +335,18 @@
       <div class="navbar-start"></div>
       <div class="navbar-center">
         <a href="/" class="flex items-center gap-2 btn btn-ghost px-2">
-          <img src="https://kiwihacks.org/assets/kiwihackstext-494RwoFq.png" alt="KiwiHacks Podium" class="h-7 w-auto" />
+          <img src="https://nova.kiwihacks.org/nova-logo.png" alt="Nova Podium" class="h-7 w-auto" />
         </a>
       </div>
       <div class="navbar-end gap-2">
         <a href="/events" class="btn btn-ghost btn-sm">Events</a>
         <a
-          href="https://www.kiwihacks.org"
+          href="https://nova.kiwihacks.org"
           target="_blank"
           rel="noreferrer"
           class="btn btn-secondary btn-sm"
         >
-          KiwiHacks
+          Nova
         </a>
         {#if page.url.pathname !== "/login"}
           <a href="/login" class="btn btn-primary btn-sm">Sign In</a>
