@@ -217,8 +217,8 @@
         class="btn w-full mb-1 gap-2"
         style="background-color: #ec3750; color: white; border-color: #ec3750;"
       >
-        <img src="/favicon.svg" alt="Hack Club" class="w-5 h-5" />
-        Sign in with Hack Club
+        <img src="/favicon.svg" alt="KiwiHacks" class="w-5 h-5" />
+        Sign in with KiwiHacks
       </a>
       <div class="divider my-2">or use email</div>
     {/if}
