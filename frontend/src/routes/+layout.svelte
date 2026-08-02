@@ -191,7 +191,7 @@
         </div>
         <div class="flex-1">
           <a href="/" class="flex items-center gap-2 btn btn-ghost px-2">
-            <img src="https://nova.kiwihacks.org/nova-logo.png" alt="Nova Podium" class="h-6 w-auto" />
+            <img src="/assets/kiwihacks/kiwi-text.png" alt="Podium" class="h-6 w-auto" />
           </a>
         </div>
       </div>
@@ -221,12 +221,12 @@
         <div class="p-6 border-b border-base-300" id="sidebar-top">
           <a href="/" class="sidebar-brand-link flex flex-col gap-1">
             <img
-              src="https://nova.kiwihacks.org/nova-logo.png"
-              alt="Nova"
+              src="/assets/kiwihacks/kiwi-text.png"
+              alt="KiwiHacks"
               class="sidebar-brand-logo h-8 w-auto"
             />
             <p class="sidebar-brand-subtitle text-base-content/70 text-sm">
-              Nova Podium
+              Podium
             </p>
           </a>
         </div>
@@ -335,7 +335,7 @@
       <div class="navbar-start"></div>
       <div class="navbar-center">
         <a href="/" class="flex items-center gap-2 btn btn-ghost px-2">
-          <img src="https://nova.kiwihacks.org/nova-logo.png" alt="Nova Podium" class="h-7 w-auto" />
+          <img src="/assets/kiwihacks/kiwi-text.png" alt="Podium" class="h-7 w-auto" />
         </a>
       </div>
       <div class="navbar-end gap-2">
