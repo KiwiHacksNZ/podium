@@ -21,3 +21,8 @@ airtable_votes_table_id = ""
 production_url = "http://localhost:5173"
 enable_test_endpoints = true  # Enable for local development and stress testing
 active_event_series = "test-series"  # Active series for testing
+
+[production]
+enable_test_endpoints = false
+production_url = "https://vote.kiwihacks.org"
+active_event_series = "flagship"

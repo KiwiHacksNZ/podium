@@ -1,9 +1,12 @@
+import os
+import warnings
 from secrets import token_urlsafe
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, HTTPException, Path as FastAPIPath, Query, Request, UploadFile
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy import func
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -42,16 +45,14 @@ from podium.constants import (
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
-PROJECT_IMAGE_DIR = Path("/app/uploads/project-images")
+PROJECT_IMAGE_DIR = Path(os.getenv("PODIUM_UPLOADS_DIR", "./uploads")) / "project-images"
 MAX_PROJECT_IMAGE_BYTES = 8 * 1024 * 1024
-ALLOWED_IMAGE_EXTENSIONS = {
-    ".avif",
-    ".gif",
-    ".jpeg",
-    ".jpg",
-    ".png",
-    ".svg",
-    ".webp",
+ALLOWED_IMAGE_CONTENT_TYPES = {"image/gif", "image/jpeg", "image/png", "image/webp"}
+IMAGE_FORMAT_EXTENSIONS = {
+    "GIF": {".gif"},
+    "JPEG": {".jpeg", ".jpg"},
+    "PNG": {".png"},
+    "WEBP": {".webp"},
 }
 
 
@@ -66,11 +67,11 @@ def _public_project_image_url(request: Request, filename: str) -> str:
 
 
 async def _save_project_image(file: UploadFile) -> str:
-    if not file.content_type or not file.content_type.startswith("image/"):
+    if file.content_type not in ALLOWED_IMAGE_CONTENT_TYPES:
         raise HTTPException(status_code=422, detail="Project image must be an image file")
 
     suffix = Path(file.filename or "").suffix.lower()
-    if suffix not in ALLOWED_IMAGE_EXTENSIONS:
+    if not any(suffix in extensions for extensions in IMAGE_FORMAT_EXTENSIONS.values()):
         raise HTTPException(status_code=422, detail="Unsupported image type")
 
     PROJECT_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -78,14 +79,28 @@ async def _save_project_image(file: UploadFile) -> str:
     destination = PROJECT_IMAGE_DIR / filename
 
     total = 0
-    with destination.open("wb") as out:
-        while chunk := await file.read(1024 * 1024):
-            total += len(chunk)
-            if total > MAX_PROJECT_IMAGE_BYTES:
-                out.close()
-                destination.unlink(missing_ok=True)
-                raise HTTPException(status_code=413, detail="Project image must be 8MB or smaller")
-            out.write(chunk)
+    try:
+        with destination.open("wb") as out:
+            while chunk := await file.read(1024 * 1024):
+                total += len(chunk)
+                if total > MAX_PROJECT_IMAGE_BYTES:
+                    raise HTTPException(status_code=413, detail="Project image must be 8MB or smaller")
+                out.write(chunk)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(destination) as image:
+                image.verify()
+                image_format = image.format
+
+        if not image_format or suffix not in IMAGE_FORMAT_EXTENSIONS.get(image_format, set()):
+            raise HTTPException(status_code=422, detail="Image contents do not match its file type")
+    except HTTPException:
+        destination.unlink(missing_ok=True)
+        raise
+    except (OSError, UnidentifiedImageError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+        destination.unlink(missing_ok=True)
+        raise HTTPException(status_code=422, detail="Invalid project image") from exc
 
     return filename
 
@@ -271,6 +286,7 @@ async def join_project(
 
 
 @router.post("/image-upload")
+@limiter.limit("10/minute")
 async def upload_project_image(
     request: Request,
     file: Annotated[UploadFile, File()],

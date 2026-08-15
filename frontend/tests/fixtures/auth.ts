@@ -81,7 +81,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
 	// Authenticated browser context with token in localStorage
 	authedContext: async ({ browser, token }, use, testInfo) => {
-		const baseURL = String(testInfo.project.use.baseURL || 'http://127.0.0.1:4173');
+		const baseURL = String(testInfo.project.use.baseURL || 'http://127.0.0.1:4174');
 		const context = await browser.newContext({
 			baseURL,
 			storageState: {

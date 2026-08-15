@@ -5,18 +5,20 @@ import { getAuthenticatedUser, validateToken } from "$lib/user.svelte";
 import { addAirtableHits } from "$lib/airtable-hits.svelte";
 // @ts-ignore
 import { PUBLIC_API_URL } from "$env/static/public";
+import { env } from "$env/dynamic/public";
 
 // If you don't want to use Session Replay, remove the `Replay` integration,
 // `replaysSessionSampleRate` and `replaysOnErrorSampleRate` options.
 Sentry.init({
-  dsn: "",
-  tracesSampleRate: 1.0,
+  dsn: env.PUBLIC_SENTRY_DSN,
+  tracesSampleRate: 0.1,
   replaysSessionSampleRate: 0,
-  replaysOnErrorSampleRate: 1,
+  replaysOnErrorSampleRate: 0.1,
   integrations: [
     Sentry.browserTracingIntegration(),
     Sentry.replayIntegration({
-      maskAllText: false,
+      maskAllText: true,
+      blockAllMedia: true,
     }),
   ],
   sendDefaultPii: false,
@@ -46,7 +48,6 @@ client.setConfig({
   baseUrl: PUBLIC_API_URL,
   headers: {
     Authorization: `Bearer ${getAuthenticatedUser().access_token}`,
-    "ngrok-skip-browser-warning": "hi",
   },
   // Use throwOnError: false to get proper error handling with response codes
   // When using a conditional to check the err:
@@ -62,14 +63,12 @@ export const init: ServerInit = async () => {
   } else {
     const token = localStorage.getItem("token");
     if (token) {
-      console.debug("Token found in localStorage", token);
+      console.debug("Stored authentication token found");
       await validateToken(token);
       console.log("Finished auth");
     } else {
       console.debug("No token found in localStorage");
     }
-    // console.debug('User token: ', user.token);
-    // console.debug('Client config: ', client.getConfig());
   }
 };
 export const handleError = Sentry.handleErrorWithSentry();

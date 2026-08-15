@@ -1,11 +1,12 @@
 name: E2E Tests
 
 on:
-  push:
-    # branches: [main]
   pull_request:
-    # branches: [main]
   workflow_dispatch:
+  workflow_call:
+    secrets:
+      DOPPLER_TOKEN:
+        required: true
 
 env:
   # Doppler will provide JWT_SECRET and other secrets from 'dev' config
@@ -73,6 +74,26 @@ jobs:
           cd frontend
           bun install
 
+      - name: Lint backend
+        working-directory: backend
+        run: uv run ruff check .
+
+      - name: Run backend tests
+        working-directory: backend
+        run: uv run python -m pytest
+
+      - name: Check frontend
+        working-directory: frontend
+        env:
+          PUBLIC_API_URL: http://localhost:8000
+        run: bun run svelte-check
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          PUBLIC_API_URL: http://localhost:8000
+        run: bun run build
+
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
@@ -86,16 +107,16 @@ jobs:
 
       - name: Check ports are available
         run: |
-          # Ensure ports 8000 (backend) and 4173 (frontend) are free
+          # Ensure ports 8000 (backend) and 4174 (frontend) are free
           if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null 2>&1; then
             echo "❌ Port 8000 already in use"
             exit 1
           fi
-          if lsof -Pi :4173 -sTCP:LISTEN -t >/dev/null 2>&1; then
-            echo "❌ Port 4173 already in use"
+          if lsof -Pi :4174 -sTCP:LISTEN -t >/dev/null 2>&1; then
+            echo "❌ Port 4174 already in use"
             exit 1
           fi
-          echo "✅ Ports 8000 and 4173 are available"
+          echo "✅ Ports 8000 and 4174 are available"
 
       - name: Run database migrations
         run: |

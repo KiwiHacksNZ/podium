@@ -361,6 +361,31 @@ async def cleanup_test_data(
     # Delete test users (pattern: test+pw*@example.com, organizer+*@test.local, attendee+*@test.local)
     await session.execute(
         text("""
+            DELETE FROM vote_audit_logs
+            WHERE voter_id IN (
+                SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
+                OR email LIKE 'organizer+%@test.local'
+                OR email LIKE 'attendee+%@test.local'
+                OR email LIKE 'admin+%@test.local'
+            )
+            OR actor_id IN (
+                SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
+                OR email LIKE 'organizer+%@test.local'
+                OR email LIKE 'attendee+%@test.local'
+                OR email LIKE 'admin+%@test.local'
+            )
+            OR project_id IN (
+                SELECT id FROM projects WHERE owner_id IN (
+                    SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
+                    OR email LIKE 'organizer+%@test.local'
+                    OR email LIKE 'attendee+%@test.local'
+                    OR email LIKE 'admin+%@test.local'
+                )
+            )
+        """)
+    )
+    await session.execute(
+        text("""
             DELETE FROM votes WHERE voter_id IN (
                 SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
                 OR email LIKE 'organizer+%@test.local'

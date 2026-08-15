@@ -13,7 +13,12 @@ env:
   IMAGE_NAME: ${{ github.repository }}/podium
 
 jobs:
+  test:
+    uses: ./.github/workflows/e2e-tests.yaml
+    secrets: inherit
+
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read

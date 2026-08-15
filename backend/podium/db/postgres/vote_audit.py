@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from sqlmodel import Field, SQLModel
+from sqlalchemy import DateTime
 
 
 class VoteAuditLog(SQLModel, table=True):
@@ -25,4 +26,8 @@ class VoteAuditLog(SQLModel, table=True):
     ip_address: str = Field(default="", max_length=255)
     user_agent: str = Field(default="", max_length=500)
     reason: str = Field(default="", max_length=500)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTime(timezone=True),
+        index=True,
+    )

@@ -170,14 +170,13 @@
     }
   }
 
-  // Check for token in URL on mount
-  // For example: /login?token=abc123
+  // Read auth material from the URL fragment, which browsers never send to servers.
   onMount(() => {
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(window.location.hash.slice(1));
     const token = urlParams.get("token");
     redirectUrl = urlParams.get("redirect") ?? "";
     if (token) {
-      console.log("Token found in URL:", token);
+      window.history.replaceState({}, "", window.location.pathname);
       verifyMagicLink(token);
     }
   });

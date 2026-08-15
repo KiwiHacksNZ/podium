@@ -5,7 +5,7 @@ spec that guarantees every backend endpoint is exercised at least once.
 
 ## Run tests
 
-Stop any running dev servers first (they collide on ports 8000 and 4173):
+Stop any running dev servers first (they collide on ports 8000 and 4174):
 
 ```bash
 pkill -f podium; pkill -f "vite|bun.*dev"

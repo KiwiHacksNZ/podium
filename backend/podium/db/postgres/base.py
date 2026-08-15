@@ -32,7 +32,7 @@ def _build_async_engine(url: str):
 
     # asyncpg does not accept sslmode/sslrootcert as direct kwargs.
     sslmode = qs.pop("sslmode", [None])[-1]
-    qs.pop("sslrootcert", None)
+    sslrootcert = qs.pop("sslrootcert", [None])[-1]
 
     normalized_url = urlunparse(parsed._replace(query=urlencode(qs, doseq=True)))
 
@@ -40,14 +40,16 @@ def _build_async_engine(url: str):
     host = (parsed.hostname or "").lower()
     local_hosts = {"localhost", "127.0.0.1", "::1", "podium-pg"}
 
-    # Respect explicit disable; otherwise keep prior behavior of enabling SSL
-    # for non-local hosts when sslmode is omitted.
-    if sslmode != "disable" and (
-        sslmode == "require" or (sslmode is None and host and host not in local_hosts)
-    ):
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
+    effective_sslmode = sslmode or ("disable" if host in local_hosts else "verify-full")
+    if effective_sslmode not in {"disable", "require", "verify-ca", "verify-full"}:
+        raise ValueError(f"Unsupported PostgreSQL sslmode: {effective_sslmode}")
+
+    if effective_sslmode != "disable":
+        # Treat `require` as verified TLS too. Encryption without certificate
+        # verification is vulnerable to machine-in-the-middle attacks.
+        ctx = ssl.create_default_context(cafile=sslrootcert)
+        if effective_sslmode == "verify-ca":
+            ctx.check_hostname = False
         connect_args["ssl"] = ctx
 
     return create_async_engine(normalized_url, echo=False, connect_args=connect_args)

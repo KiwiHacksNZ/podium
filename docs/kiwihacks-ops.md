@@ -14,6 +14,14 @@ This file is the fast handoff for maintainers and future agents.
 - `PODIUM_JWT_SECRET`
 - `PODIUM_PRODUCTION_URL`
 - `PODIUM_ACTIVE_EVENT_SERIES` (for production this should be `flagship`)
+- `PODIUM_TURNSTILE_SECRET_KEY`
+- `PODIUM_CORS_ORIGINS` (for example `https://vote.kiwihacks.org`)
+- `PODIUM_ALLOWED_HOSTS` (the backend hostname, without a scheme)
+- `PODIUM_TRUSTED_PROXY_HOSTS` (explicit cloudflared/container proxy IPs or CIDRs)
+
+The image sets `ENV_FOR_DYNACONF=production`. Do not override it in production.
+Remote PostgreSQL URLs must use certificate-verified TLS. Add
+`sslmode=verify-full`; add `sslrootcert=/path/to/ca.pem` for a private CA.
 
 Optional but important:
 
@@ -21,6 +29,8 @@ Optional but important:
 - `PODIUM_SSO_CLIENT_SECRET`
 - `PODIUM_LOOPS_API_KEY`
 - `PODIUM_LOOPS_TRANSACTIONAL_ID`
+- `PODIUM_SENTRY_DSN`
+- Frontend `PUBLIC_SENTRY_DSN` in Vercel
 
 ## Critical Event Rule
 
@@ -40,7 +50,7 @@ cd frontend
 vercel --prod --yes
 ```
 
-## Deploy Backend (Nest)
+## Deploy Backend (Podium)
 
 ```bash
 ssh -o StrictHostKeyChecking=accept-new <ssh-user>@<backend-host>
@@ -48,10 +58,13 @@ cd <repo-path-on-server>
 docker compose up -d --build podium-backend
 ```
 
+The backend runs `alembic upgrade head` before starting. The host uploads
+directory must be writable by container UID `1000`.
+
 ## Check Backend Health
 
 ```bash
-curl -I https://<backend-domain>/openapi.json
+curl -fsS https://<backend-domain>/health/ready
 ```
 
 Expected: HTTP `200`.

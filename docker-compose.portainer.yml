@@ -25,37 +25,22 @@ services:
     volumes:
       - /opt/kiwihacks-podium/stack.env:/run/secrets/stack.env:ro
       - /opt/kiwihacks-podium/uploads:/app/uploads
-    # env is exported line-by-line from the mounted file (no Doppler on the VPS);
-    # --proxy-headers so base_url is https behind the cloudflared tunnel,
-    # otherwise the derived OAuth redirect_uri mismatches the registered one.
+    # env is exported line-by-line from the mounted file (no Doppler on the VPS).
     entrypoint:
       - /bin/bash
       - -c
       - 'while IFS= read -r l; do [ -n "$$l" ] && export "$$l"; done < /run/secrets/stack.env; exec "$$@"'
       - --
     command:
-      - uv
-      - run
-      - python
-      - -m
-      - uvicorn
-      - podium.main:app
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8000"
-      - --proxy-headers
-      - --forwarded-allow-ips
-      - "*"
-      # one worker saturates a single core at ~87 rps; the box has 8
-      - --workers
-      - "4"
+      - /bin/bash
+      - -c
+      - alembic upgrade head && exec python -m uvicorn podium.main:app --host 0.0.0.0 --port 8000 --workers 4 --no-access-log
     ports:
       - "127.0.0.1:8001:8000"
     depends_on:
       podium-pg: { condition: service_healthy }
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/openapi.json >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health/ready >/dev/null || exit 1"]
       interval: 30s
       retries: 5
       start_period: 20s

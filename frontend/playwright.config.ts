@@ -17,7 +17,7 @@ export default defineConfig({
 	expect: { timeout: 10000 },
 
 	use: {
-		baseURL: externalBaseURL ?? 'http://127.0.0.1:4173',
+		baseURL: externalBaseURL ?? 'http://127.0.0.1:4174',
 		trace: 'on-first-retry',
 		screenshot: 'only-on-failure',
 		serviceWorkers: 'block',
@@ -34,9 +34,8 @@ export default defineConfig({
 
 	webServer: isExternal ? undefined : [
 		{
-			// Backend runs with Doppler for secrets management
-			// Use --preserve-env to allow CI to override PODIUM_DATABASE_URL and disable Turnstile
-			command: 'cd ../backend && doppler run --project podium --config dev --preserve-env=PODIUM_DATABASE_URL,PODIUM_TURNSTILE_SECRET_KEY -- uv run podium --log-level warning',
+			// The caller supplies config directly or wraps Playwright with Doppler.
+			command: 'cd ../backend && uv run python -m podium --log-level warning',
 			port: 8000,
 			timeout: 120000,
 			reuseExistingServer: true,
@@ -53,8 +52,8 @@ export default defineConfig({
 		},
 		{
 			// Use dev server (preview has CORS issues with client auth headers)
-			command: 'bun dev --port 4173',
-			port: 4173,
+			command: 'bun dev --port 4174',
+			port: 4174,
 			timeout: 120000,
 			reuseExistingServer: true,
 			env: {

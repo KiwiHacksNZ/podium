@@ -20,18 +20,12 @@ services:
     build: ./backend
     entrypoint: []
     command:
-      - uv
-      - run
-      - python
-      - -m
-      - uvicorn
-      - podium.main:app
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8000"
+      - /bin/bash
+      - -c
+      - alembic upgrade head && exec python -m uvicorn podium.main:app --host 0.0.0.0 --port 8000
     environment:
       TZ: Pacific/Auckland
+      ENV_FOR_DYNACONF: development
       PODIUM_DATABASE_URL: postgresql+asyncpg://postgres:localpass@podium-pg:5432/podium?sslmode=disable
       PODIUM_JWT_SECRET: ${PODIUM_JWT_SECRET:-local-dev-jwt-secret-change-me}
       PODIUM_SSO_CLIENT_ID: ${PODIUM_SSO_CLIENT_ID:-}
@@ -45,7 +39,7 @@ services:
     depends_on:
       podium-pg: { condition: service_healthy }
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/openapi.json >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health/ready >/dev/null || exit 1"]
       interval: 10s
       retries: 5
       start_period: 15s

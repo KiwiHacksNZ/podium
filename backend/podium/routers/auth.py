@@ -24,6 +24,7 @@ from podium.constants import BAD_AUTH
 from podium.validators.email import is_disposable_email
 from sqlalchemy.orm import selectinload
 from podium.db.postgres import User, UserPrivate, get_session, scalar_one_or_none, user_to_private, default_display_name
+from podium.limiter import limiter
 
 router = APIRouter(tags=["auth"])
 
@@ -39,6 +40,18 @@ OAUTH_ME_URL = settings.oauth_me_url
 
 class UserLoginPayload(BaseModel):
     email: str
+
+
+class LoginRequested(BaseModel):
+    message: str
+
+
+def safe_redirect_path(redirect: str) -> str:
+    """Accept only same-origin absolute paths for post-login navigation."""
+    redirect = redirect.strip()
+    if not redirect.startswith("/") or redirect.startswith("//"):
+        return "/"
+    return redirect[:2048]
 
 
 def create_access_token(
@@ -60,9 +73,9 @@ async def send_magic_link(email: str, redirect: str = ""):
         token_type="magic_link",
     )
 
-    magic_link = f"{settings.production_url}/login?token={token}"
-    if redirect:
-        magic_link += f"&redirect={redirect}"
+    query = urlencode({"token": token, "redirect": safe_redirect_path(redirect)})
+    # URL fragments are not sent to frontend hosting/CDN logs or referrers.
+    magic_link = f"{settings.production_url}/login#{query}"
 
     if settings.loops_api_key:
         payload = {
@@ -86,15 +99,18 @@ async def send_magic_link(email: str, redirect: str = ""):
     else:
         print("[WARNING] No Loops API key set. Not sending magic link email.")
 
-    print(f"Magic link for {email}: {magic_link}")
+    if str(settings.current_env).upper() == "DEVELOPMENT":
+        print(f"Development magic link for {email}: {magic_link}")
 
 
 @router.post("/request-login")
+@limiter.limit("5/minute")
 async def request_login(
+    request: Request,
     user: UserLoginPayload,
     redirect: Annotated[str, Query()],
     session: Annotated[AsyncSession, Depends(get_session)],
-):
+) -> LoginRequested:
     """Send a magic link to the user's email.
 
     Turnstile is intentionally not required here: the signup flow sends the
@@ -107,9 +123,9 @@ async def request_login(
     if is_disposable_email(email):
         raise HTTPException(status_code=400, detail="Temporary/disposable email addresses aren't allowed — please use your real email")
     existing = await scalar_one_or_none(session, select(User).where(User.email == email))
-    if existing is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    await send_magic_link(email, redirect=redirect)
+    if existing is not None:
+        await send_magic_link(email, redirect=redirect)
+    return LoginRequested(message="If that account exists, a login link has been sent")
 
 
 class AuthenticatedUser(BaseModel):
@@ -250,7 +266,9 @@ async def sso_callback(
         expires_delta=timedelta(minutes=15),
         token_type="magic_link",
     )
-    return RedirectResponse(f"{settings.production_url}/login?token={token}")
+    return RedirectResponse(
+        f"{settings.production_url}/login#{urlencode({'token': token})}"
+    )
 
 
 security = HTTPBearer()

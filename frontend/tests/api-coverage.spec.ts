@@ -54,11 +54,11 @@ test.describe('API coverage — AUTH router', () => {
 		expect(resp.ok()).toBe(true);
 	});
 
-	test('POST /request-login returns 404 for an unknown user', async ({ authedApi }, testInfo) => {
+	test('POST /request-login gives a generic response for an unknown user', async ({ authedApi }, testInfo) => {
 		// @example.com is the reserved documentation TLD — EmailStr accepts it.
 		const unknown = `nobody+${Date.now()}-w${testInfo.workerIndex}@example.com`;
 		const resp = await requestLogin(authedApi, unknown);
-		expect(resp.status()).toBe(404);
+		expect(resp.status()).toBe(200);
 	});
 
 	// GET /verify is exercised in the `token` fixture for every worker, so it is

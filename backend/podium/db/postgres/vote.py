@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlmodel import Field, SQLModel, Relationship, UniqueConstraint
+from sqlalchemy import DateTime
 
 if TYPE_CHECKING:
     from podium.db.postgres.user import User
@@ -25,7 +26,10 @@ class Vote(SQLModel, table=True):
 
     # Primary key - auto-generated UUID
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTime(timezone=True),
+    )
     ip_address: str = Field(default="", max_length=255)
     user_agent: str = Field(default="", max_length=500)
 
@@ -38,4 +42,3 @@ class Vote(SQLModel, table=True):
     voter: "User" = Relationship(back_populates="votes")
     project: "Project" = Relationship(back_populates="votes")
     event: "Event" = Relationship(back_populates="votes")
-

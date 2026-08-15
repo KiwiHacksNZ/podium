@@ -95,7 +95,7 @@ test.describe('Full User Journey', () => {
 		browser
 	}, testInfo) => {
 		const timestamp = Date.now();
-		const baseURL = String(testInfo.project.use.baseURL || 'http://127.0.0.1:4173');
+		const baseURL = String(testInfo.project.use.baseURL || 'http://127.0.0.1:4174');
 
 		// ============================================
 		// PART 1: Organizer creates event and projects
@@ -342,7 +342,7 @@ test.describe('Full User Journey', () => {
 		browser
 	}, testInfo) => {
 		const timestamp = Date.now();
-		const baseURL = String(testInfo.project.use.baseURL || 'http://127.0.0.1:4173');
+		const baseURL = String(testInfo.project.use.baseURL || 'http://127.0.0.1:4174');
 
 		// Setup: Create organizer and event via API (infrastructure only)
 		const organizerEmail = `organizer+${timestamp}@test.local`;
