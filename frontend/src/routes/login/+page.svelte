@@ -159,7 +159,6 @@
         handleError(err);
         return;
       }
-      localStorage.setItem("token", data.access_token);
       await validateToken(data.access_token);
       toast("Login successful");
 

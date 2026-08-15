@@ -46,6 +46,7 @@ globalThis.fetch = async (
 
 client.setConfig({
   baseUrl: PUBLIC_API_URL,
+  credentials: "include",
   headers: {
     Authorization: `Bearer ${getAuthenticatedUser().access_token}`,
   },
@@ -61,14 +62,9 @@ export const init: ServerInit = async () => {
     await validateToken(getAuthenticatedUser().access_token);
     console.log("Finished auth");
   } else {
-    const token = localStorage.getItem("token");
-    if (token) {
-      console.debug("Stored authentication token found");
-      await validateToken(token);
-      console.log("Finished auth");
-    } else {
-      console.debug("No token found in localStorage");
-    }
+    console.debug("Checking HttpOnly auth cookie");
+    await validateToken();
+    console.log("Finished auth");
   }
 };
 export const handleError = Sentry.handleErrorWithSentry();

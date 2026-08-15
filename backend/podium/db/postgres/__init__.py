@@ -29,6 +29,7 @@ from podium.db.postgres.project import (
 from podium.db.postgres.vote import Vote
 from podium.db.postgres.vote_audit import VoteAuditLog
 from podium.db.postgres.referral import Referral
+from podium.db.postgres.magic_link import MagicLink
 
 __all__ = [
     # Database utilities
@@ -65,4 +66,5 @@ __all__ = [
     "Vote",
     "VoteAuditLog",
     "Referral",
+    "MagicLink",
 ]

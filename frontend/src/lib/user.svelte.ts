@@ -2,6 +2,7 @@ import { client, UsersService } from "$lib/client/sdk.gen";
 import { AuthService } from "$lib/client/sdk.gen";
 import type { AuthenticatedUser, UserPrivate } from "./client";
 import { resetProjectState } from "$lib/project-state.svelte";
+import { env } from "$env/dynamic/public";
 
 export const defaultUser: UserPrivate = {
   id: "",
@@ -33,7 +34,10 @@ export function setAuthenticatedUser(newUser: AuthenticatedUser) {
 
 export function signOut() {
   user = defaultAuthenticatedUser;
-  localStorage.removeItem("token");
+  void fetch(`${env.PUBLIC_API_URL}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
   resetProjectState();
   client.setConfig({
     headers: {
@@ -41,15 +45,13 @@ export function signOut() {
     },
   });
   console.debug(
-    "User signed out, cleared user state, token in localStorage and headers",
+    "User signed out and cleared auth cookie request",
   );
 }
 
-export function validateToken(token: string): Promise<void> {
+export function validateToken(token?: string): Promise<void> {
   return UsersService.getCurrentUserInfoUsersCurrentGet({
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
     throwOnError: false,
   })
     .then((response) => {
@@ -58,13 +60,13 @@ export function validateToken(token: string): Promise<void> {
         throw new Error("Invalid token");
       }
       user = {
-        access_token: token,
+        access_token: token ?? "",
         token_type: "Bearer",
         user: response.data,
       };
       client.setConfig({
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: token ? `Bearer ${token}` : "",
         },
       });
       console.debug("Token verified, set user state and headers");

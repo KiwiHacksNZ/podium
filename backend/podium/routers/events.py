@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from podium.config import settings
 from podium.routers.auth import get_current_user
+from podium.authz import require_platform_admin
 from podium.db.postgres import (
     User,
     Event,
@@ -350,6 +351,7 @@ async def create_test_event(
 
 @router.post("/test/cleanup")
 async def cleanup_test_data(
+    _: Annotated[User, Depends(require_platform_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     """Delete all test data created by e2e tests. Only available when enable_test_endpoints is true."""

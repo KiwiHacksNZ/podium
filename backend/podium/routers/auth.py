@@ -2,15 +2,18 @@
 Magic link authentication and JWT session management.
 
 Flow: POST /request-login → email with magic link → GET /verify?token=... → JWT access token
-The access token is a short-lived JWT (default 2 days) stored in localStorage by the frontend.
+The access token is a short-lived JWT. Browser sessions use an HttpOnly cookie;
+Bearer tokens remain supported for API clients.
 """
 
 from datetime import datetime, timedelta, timezone
+from hmac import compare_digest
+from secrets import token_urlsafe
 from typing import Annotated
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from sqlmodel import select
@@ -23,7 +26,8 @@ from podium.config import settings
 from podium.constants import BAD_AUTH
 from podium.validators.email import is_disposable_email
 from sqlalchemy.orm import selectinload
-from podium.db.postgres import User, UserPrivate, get_session, scalar_one_or_none, user_to_private, default_display_name
+from sqlalchemy import update
+from podium.db.postgres import MagicLink, User, UserPrivate, get_session, scalar_one_or_none, user_to_private, default_display_name
 from podium.limiter import limiter
 
 router = APIRouter(tags=["auth"])
@@ -36,6 +40,8 @@ MAGIC_LINK_EXPIRE_MINUTES = 30
 OAUTH_AUTHORIZE_URL = settings.oauth_authorize_url
 OAUTH_TOKEN_URL = settings.oauth_token_url
 OAUTH_ME_URL = settings.oauth_me_url
+OAUTH_STATE_COOKIE = "podium_oauth_state"
+ACCESS_TOKEN_COOKIE = "podium_access_token"
 
 
 class UserLoginPayload(BaseModel):
@@ -66,10 +72,17 @@ def create_access_token(
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-async def send_magic_link(email: str, redirect: str = ""):
+async def send_magic_link(
+    email: str, redirect: str, session: AsyncSession
+):
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+    link_id = token_urlsafe(32)
+    session.add(MagicLink(id=link_id, email=email, expires_at=expires_at))
+    await session.commit()
+
     token = create_access_token(
-        data={"sub": email},
-        expires_delta=timedelta(minutes=15),
+        data={"sub": email, "jti": link_id},
+        expires_delta=expires_at - datetime.now(timezone.utc),
         token_type="magic_link",
     )
 
@@ -124,7 +137,7 @@ async def request_login(
         raise HTTPException(status_code=400, detail="Temporary/disposable email addresses aren't allowed — please use your real email")
     existing = await scalar_one_or_none(session, select(User).where(User.email == email))
     if existing is not None:
-        await send_magic_link(email, redirect=redirect)
+        await send_magic_link(email, redirect=redirect, session=session)
     return LoginRequested(message="If that account exists, a login link has been sent")
 
 
@@ -132,6 +145,22 @@ class AuthenticatedUser(BaseModel):
     access_token: str
     token_type: str
     user: UserPrivate
+
+
+def _secure_cookie() -> bool:
+    return str(settings.production_url).startswith("https://")
+
+
+def _set_access_cookie(response: Response, token: str) -> Response:
+    response.set_cookie(
+        ACCESS_TOKEN_COOKIE,
+        token,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        httponly=True,
+        secure=_secure_cookie(),
+        samesite="lax",
+    )
+    return response
 
 
 @router.get("/verify")
@@ -143,11 +172,27 @@ async def verify_token(
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str | None = payload.get("sub")
+        link_id: str | None = payload.get("jti")
         token_type: str | None = payload.get("token_type")
-        if email is None or token_type != "magic_link":
+        if email is None or link_id is None or token_type != "magic_link":
             raise HTTPException(status_code=400, detail="Invalid token")
     except PyJWTError:
         raise HTTPException(status_code=400, detail="Invalid token")
+
+    now = datetime.now(timezone.utc)
+    consumed = await session.execute(
+        update(MagicLink)
+        .where(
+            MagicLink.id == link_id,
+            MagicLink.email == email,
+            MagicLink.used_at.is_(None),
+            MagicLink.expires_at > now,
+        )
+        .values(used_at=now)
+    )
+    if consumed.rowcount != 1:
+        raise HTTPException(status_code=400, detail="Invalid or already-used token")
+    await session.commit()
 
     stmt = select(User).where(User.email == email).options(selectinload(User.votes))
     user = await scalar_one_or_none(session, stmt)
@@ -159,11 +204,22 @@ async def verify_token(
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         token_type="access",
     )
-    return AuthenticatedUser(
+    response = AuthenticatedUser(
         access_token=access_token,
         token_type="access",
         user=user_to_private(user),
     )
+    # The frontend keeps this token in memory only; browser persistence uses
+    # an HttpOnly cookie so XSS cannot read the bearer credential.
+    response = JSONResponse(response.model_dump())
+    return _set_access_cookie(response, access_token)
+
+
+@router.post("/auth/logout", status_code=204)
+async def logout() -> Response:
+    response = Response(status_code=204)
+    response.delete_cookie(ACCESS_TOKEN_COOKIE)
+    return response
 
 
 @router.get("/auth/sso")
@@ -173,8 +229,9 @@ async def sso_login(request: Request) -> RedirectResponse:
         raise HTTPException(status_code=501, detail="OAuth auth is not configured")
     if not OAUTH_AUTHORIZE_URL:
         raise HTTPException(status_code=501, detail="OAuth provider URLs are not configured")
+    state_nonce = token_urlsafe(32)
     state = create_access_token(
-        data={"sub": "csrf"},
+        data={"sub": "csrf", "nonce": state_nonce},
         expires_delta=timedelta(minutes=10),
         token_type="oauth_state",
     )
@@ -188,7 +245,16 @@ async def sso_login(request: Request) -> RedirectResponse:
         "scope": "email name",
         "state": state,
     })
-    return RedirectResponse(f"{OAUTH_AUTHORIZE_URL}?{params}")
+    response = RedirectResponse(f"{OAUTH_AUTHORIZE_URL}?{params}")
+    response.set_cookie(
+        OAUTH_STATE_COOKIE,
+        state_nonce,
+        max_age=600,
+        httponly=True,
+        secure=str(settings.production_url).startswith("https://"),
+        samesite="lax",
+    )
+    return response
 
 
 @router.get("/auth/sso/callback")
@@ -202,7 +268,14 @@ async def sso_callback(
     # Validate CSRF state token
     try:
         state_payload = jwt.decode(state, SECRET_KEY, algorithms=[ALGORITHM])
-        if state_payload.get("token_type") != "oauth_state":
+        state_nonce = state_payload.get("nonce")
+        cookie_nonce = request.cookies.get(OAUTH_STATE_COOKIE)
+        if (
+            state_payload.get("token_type") != "oauth_state"
+            or not state_nonce
+            or not cookie_nonce
+            or not compare_digest(str(state_nonce), cookie_nonce)
+        ):
             raise HTTPException(status_code=400, detail="Invalid OAuth state")
     except PyJWTError:
         raise HTTPException(status_code=400, detail="Invalid OAuth state")
@@ -261,26 +334,38 @@ async def sso_callback(
         user = await scalar_one_or_none(session, stmt)
 
     # Issue a short-lived magic-link token so the existing frontend /verify flow handles the rest
+    magic_link_id = token_urlsafe(32)
+    magic_link_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+    session.add(
+        MagicLink(id=magic_link_id, email=email, expires_at=magic_link_expires_at)
+    )
+    await session.commit()
     token = create_access_token(
-        data={"sub": email},
+        data={"sub": email, "jti": magic_link_id},
         expires_delta=timedelta(minutes=15),
         token_type="magic_link",
     )
-    return RedirectResponse(
+    response = RedirectResponse(
         f"{settings.production_url}/login#{urlencode({'token': token})}"
     )
+    response.delete_cookie(OAUTH_STATE_COOKIE)
+    return response
 
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> User:
     """Decode JWT and return the authenticated user."""
     try:
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        token = credentials.credentials if credentials else request.cookies.get(ACCESS_TOKEN_COOKIE)
+        if not token:
+            raise BAD_AUTH
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str | None = payload.get("sub")
         token_type: str | None = payload.get("token_type")
         if email is None or token_type != "access":

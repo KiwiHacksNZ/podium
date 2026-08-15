@@ -163,6 +163,8 @@ def validate_runtime_security() -> None:
         return
 
     problems: list[str] = []
+    if not str(settings.production_url).startswith("https://"):
+        problems.append("PODIUM_PRODUCTION_URL must use HTTPS")
     if settings.get("enable_test_endpoints", False):
         problems.append("test endpoints must be disabled")
     if not settings.get("turnstile_secret_key", ""):
