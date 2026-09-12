@@ -155,13 +155,17 @@ def _secure_cookie() -> bool:
 
 
 def _set_access_cookie(response: Response, token: str) -> Response:
+    secure = _secure_cookie()
     response.set_cookie(
         ACCESS_TOKEN_COOKIE,
         token,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         httponly=True,
-        secure=_secure_cookie(),
-        samesite="lax",
+        secure=secure,
+        # Frontend and API are on different registrable domains
+        # (vote.kiwihacks.org vs *.kiwihacks.com), so persistence needs a
+        # cross-site cookie. SameSite=None requires Secure.
+        samesite="none" if secure else "lax",
     )
     return response
 
