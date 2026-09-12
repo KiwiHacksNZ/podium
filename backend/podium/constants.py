@@ -19,12 +19,14 @@ class EventPhase(str, Enum):
 
     DRAFT      - not yet visible or accepting submissions
     SUBMISSION - open for project submissions
-    VOTING     - submissions closed, voting is open
+    JUDGING    - submissions closed, judges score every project
+    VOTING     - finalists locked in, attendees rank them 1st/2nd/3rd
     CLOSED     - voting closed, results visible
     """
 
     DRAFT = "draft"
     SUBMISSION = "submission"
+    JUDGING = "judging"
     VOTING = "voting"
     CLOSED = "closed"
 
@@ -72,3 +74,20 @@ DEFAULT_ADMIN_PERMISSIONS: frozenset[str] = frozenset(
         PlatformAdminPermission.REMOVE_PROJECTS.value,
     }
 )
+
+
+class JudgingCriterion(str, Enum):
+    """The four things judges score each project on, 1-10."""
+
+    ORIGINALITY = "originality"
+    TECHNICALITY = "technicality"
+    THEME = "theme"
+    USABILITY = "usability"
+
+
+# How many top-scoring projects advance from judging to the attendee vote.
+FINALIST_COUNT = 5
+
+# Weight of each attendee ballot position: 1st choice is worth 3, 2nd 2, 3rd 1.
+RANK_POINTS: dict[int, int] = {1: 3, 2: 2, 3: 1}
+MAX_RANK = len(RANK_POINTS)

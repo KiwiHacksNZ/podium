@@ -1,6 +1,6 @@
 # Architecture
 
-Podium is a peer-judging platform for Kiwihacks hackathons. Attendees select an official event, submit projects, and vote.
+Podium is a judging platform for Kiwihacks hackathons. Attendees select an official event and submit projects; judges score every project, and attendees rank the finalists.
 
 ## Stack
 
@@ -15,25 +15,30 @@ Podium is a peer-judging platform for Kiwihacks hackathons. Attendees select an 
 
 Core entities:
 
-- **User** — email, display_name, first_name, is_superadmin
-- **Event** — name, slug, phase, feature_flags_csv, repo_validation, demo_validation, require_address
-- **Project** — name, repo, image_url, demo, owner_id, event_id, points, validation_status, validation_message
-- **Vote** — voter_id, project_id, event_id (unique on voter+project)
+- **User** — email, display_name, first_name, is_superadmin, is_admin
+- **Event** — name, slug, phase, judging_open, voting_open, judge_code, feature_flags_csv, repo_validation, demo_validation, require_address
+- **Project** — name, repo, image_url, demo, owner_id, event_id, points, is_finalist, validation_status, validation_message
+- **Vote** — voter_id, project_id, event_id, rank (unique on voter+project, and on voter+event+rank)
+- **JudgeScore** — judge_id, project_id, event_id, originality/technicality/theme/usability (unique on judge+project)
 
 M2M relationships via junction tables:
 - `event_attendees` — User ↔ Event
+- `event_judges` — User ↔ Event (judging access, per event)
 - `project_collaborators` — User ↔ Project
 
 ## Event Lifecycle
 
-Events move through phases in order: `draft` → `submission` → `voting` → `closed`.
+Events move through phases in order: `draft` → `submission` → `judging` → `voting` → `closed`.
 
 | Phase | What's allowed |
 |---|---|
 | `draft` | Not yet visible to users |
 | `submission` | Users can join and submit projects |
-| `voting` | Submissions closed; users can vote |
-| `closed` | Voting closed; leaderboard visible |
+| `judging` | Submissions closed; judges are scoring |
+| `voting` | Finalists picked; attendees are ranking |
+| `closed` | Leaderboard visible |
+
+The phase controls visibility and the leaderboard, and tells everyone where the event is up to. It does **not** gate the two rounds — those are separate booleans on the event, `judging_open` and `voting_open`, flipped independently from the admin panel's Rounds switches (`PATCH /events/admin/{id}`). Judges can still be scoring while attendees vote, or either round can run on its own.
 
 The phase is changed by the event owner via the admin panel UI or `PATCH /events/admin/{id}`.
 
@@ -87,9 +92,19 @@ Sign in → Select event → (Address check) → Submit project → Validation �
 5. Background validation runs; badge appears on project card
 6. Can vote on other projects
 
-## Voting Rules
+## Judging and Voting
 
-Vote limits scale with project count: 1 vote (< 4 projects), 2 votes (4-19), 3 votes (≥ 20). Users can't vote for their own or collaborated projects.
+Results come out of two rounds.
+
+**Judges.** Judging access is scoped to one event, held in the `event_judges` link table — judging one event grants nothing on another. Two ways in: the organizer adds someone by email from the admin panel's Judges card (`POST /events/admin/{id}/add-judge`), or they hand out the event's rotatable 6-digit code (`POST /events/admin/{id}/judge-code`) which the judge redeems at `/judge` (`POST /judging/redeem`). Superadmins bypass the check, as everywhere else. A user's judged events come back on `/users/current` as `judge_event_ids`.
+
+**Round 1 — judges.** While `judging_open` is on, that event's judges score every project 1-10 on four criteria: originality, technicality, theme, and usability (max 40). One score row per judge per project; re-scoring replaces it. Judges can't score a project they own or collaborate on. Standings are the mean judge total, ranked at `GET /judging/{event_id}/results`.
+
+**Locking finalists.** The organizer calls `POST /events/admin/{event_id}/finalists`, which marks the top `FINALIST_COUNT` (5) projects by mean judge score as finalists, ties broken by how many judges scored them. Re-running it recomputes the whole set, but it is refused once the first vote is cast — otherwise votes could be left on projects that are no longer finalists.
+
+**Round 2 — attendees.** While `voting_open` is on, attendees rank the finalists: the ballot is an ordered list, so `projects[0]` is their first choice. A first choice is worth 3 points, a second 2, a third 1 (`RANK_POINTS`). Attendees get `min(3, finalist_count)` picks once finalists exist; before that, ballot size still scales with project count (1 under 4 projects, 2 under 20, else 3). Users can't vote for their own or collaborated projects, and non-finalists are rejected.
+
+A project's `points` is the weighted sum of the ballots it appears on — judge scores decide who reaches the ballot, not the final order.
 
 ## Key Directories
 

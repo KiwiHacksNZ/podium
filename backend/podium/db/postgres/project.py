@@ -10,13 +10,14 @@ from uuid import UUID, uuid4
 from pydantic import computed_field
 from sqlmodel import Field, SQLModel, Relationship
 
-from podium.constants import ValidationStatus
+from podium.constants import RANK_POINTS, ValidationStatus
 from podium.db.postgres.links import ProjectCollaboratorLink
 
 if TYPE_CHECKING:
     from podium.db.postgres.user import User
     from podium.db.postgres.event import Event
     from podium.db.postgres.vote import Vote
+    from podium.db.postgres.judge_score import JudgeScore
 
 
 
@@ -41,13 +42,32 @@ class Project(SQLModel, table=True):
     validation_status: str = Field(default=ValidationStatus.PENDING, max_length=20)
     validation_message: str = Field(default="")
 
+    # Set when an organizer locks in the top finalists after judging. Only
+    # finalists appear on the attendee ballot.
+    is_finalist: bool = Field(default=False)
+
     # Computed field pattern: use @computed_field for derived values.
     # Requires eager-loading the relationship: select(Project).options(selectinload(Project.votes))
     @computed_field  # type: ignore[prop-decorator]
     @property
     def points(self) -> int:
-        """Vote count - computed from votes relationship."""
-        return len(self.votes)
+        """Weighted ballot score — 3 for a 1st choice, 2 for a 2nd, 1 for a 3rd."""
+        return sum(RANK_POINTS.get(v.rank, 0) for v in (self.votes or []))
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def judge_score(self) -> float:
+        """Mean judge total out of 40 — requires selectinload(Project.judge_scores)."""
+        scores = self.judge_scores or []
+        if not scores:
+            return 0.0
+        return round(sum(s.total for s in scores) / len(scores), 2)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def judge_count(self) -> int:
+        """How many judges have scored this project."""
+        return len(self.judge_scores or [])
 
     @computed_field
     @property
@@ -80,6 +100,7 @@ class Project(SQLModel, table=True):
         back_populates="projects_collaborating", link_model=ProjectCollaboratorLink
     )
     votes: list["Vote"] = Relationship(back_populates="project")
+    judge_scores: list["JudgeScore"] = Relationship(back_populates="project")
 
 
 
@@ -98,6 +119,7 @@ class ProjectPublic(SQLModel):
     demo: str
     description: str
     points: int
+    is_finalist: bool = False
     owner_id: UUID
     owner_display_name: str = ""
     collaborator_display_names: list[str] = []

@@ -15,6 +15,9 @@
   import AttendeesTable from "./AttendeesTable.svelte";
   import AdminLeaderboard from "./AdminLeaderboard.svelte";
   import StageTimeline from "./StageTimeline.svelte";
+  import RoundSwitches from "./RoundSwitches.svelte";
+  import JudgesTable from "./JudgesTable.svelte";
+  import JudgingPanel from "./JudgingPanel.svelte";
   import VotesTable from "./VotesTable.svelte";
   import VoteAuditTable from "./VoteAuditTable.svelte";
   import VoteSuspicionTable from "./VoteSuspicionTable.svelte";
@@ -181,8 +184,23 @@
         }}
       />
 
+      <!-- Judging / voting round switches -->
+      <RoundSwitches
+        {event}
+        onUpdate={(updated) => {
+          event.judging_open = updated.judging_open;
+          event.voting_open = updated.voting_open;
+        }}
+      />
+
       <!-- Attendees Table -->
       <AttendeesTable {attendees} onRemoveAttendee={removeAttendee} {event} />
+
+      <!-- Judges for this event + judge code -->
+      <JudgesTable {event} />
+
+      <!-- Judging Results + finalist lock-in -->
+      <JudgingPanel {event} />
 
       <!-- Admin Leaderboard -->
       <AdminLeaderboard projects={adminLeaderboard} {event} />

@@ -17,7 +17,12 @@ import {
 	adminGetLeaderboard,
 	adminGetReferrals,
 	adminGetVotes,
+	adminLockFinalists,
+	adminAddJudge,
+	adminGetJudges,
 	adminPatchEvent,
+	adminRemoveJudge,
+	adminRotateJudgeCode,
 	adminRemoveAttendee,
 	attendEvent,
 	createProject,
@@ -28,19 +33,28 @@ import {
 	getEvent,
 	getEventIdBySlug,
 	getEventProjects,
+	getJudgingResults,
 	getMyProjects,
 	getOfficialEvents,
 	getProject,
 	getUserPublic,
 	joinProject,
+	judgeGetProjects,
+	judgeScoreProject,
+	redeemJudgeCode,
 	requestLogin,
+	setRoundOpen,
 	updateCurrentUser,
 	updateProject,
 	userExists,
 	validateProject,
 	voteForProjects
 } from './helpers/api';
-import { createUserAndGetToken, secondaryUserEmail } from './helpers/users';
+import {
+	createJudgeAndGetToken,
+	createUserAndGetToken,
+	secondaryUserEmail
+} from './helpers/users';
 
 const BAD_UUID = '00000000-0000-0000-0000-000000000000';
 
@@ -531,13 +545,353 @@ test.describe('API coverage — ADMIN router', () => {
 		const referrals = await resp.json();
 		expect(Array.isArray(referrals)).toBe(true);
 	});
+
+	test('POST /events/admin/{id}/finalists locks the top judge-scored projects', async ({
+		authedApi
+	}, testInfo) => {
+		const tag = `finalists-${Date.now()}-w${testInfo.workerIndex}`;
+		const event = await createTestEvent(authedApi, { name: unique('Finalists', testInfo) });
+		await attendEvent(authedApi, event.id);
+		const project = await createProject(authedApi, {
+			name: unique('Finalist P', testInfo),
+			description: '',
+			event_id: event.id,
+			repo: 'https://github.com/heycastawhat/kiwihacks-podium',
+			image_url: 'https://raw.githubusercontent.com/heycastawhat/kiwihacks-podium/main/README.md'
+		});
+
+		// Nothing judged yet → 400
+		const tooEarly = await adminLockFinalists(authedApi, event.id);
+		expect(tooEarly.status()).toBe(400);
+
+		await setRoundOpen(authedApi, event.id, 'judging_open', true);
+		const judge = await createJudgeAndGetToken(
+			secondaryUserEmail('admin', tag),
+			'Finalist Judge',
+			event.id
+		);
+		try {
+			const scored = await judgeScoreProject(judge.authedApi, event.id, project.id, {
+				originality: 9,
+				technicality: 9,
+				theme: 9,
+				usability: 9
+			});
+			expect(scored.ok()).toBe(true);
+		} finally {
+			await judge.authedApi.dispose();
+			await judge.api.dispose();
+		}
+
+		const resp = await adminLockFinalists(authedApi, event.id);
+		expect(resp.ok()).toBe(true);
+		const finalists = await resp.json();
+		expect(finalists.some((f: { project_id: string }) => f.project_id === project.id)).toBe(true);
+
+		// finalist_count is exposed on the event so the ballot can size itself
+		const updated = await getEvent(authedApi, event.id);
+		expect(updated.finalist_count).toBe(1);
+	});
+});
+
+test.describe('API coverage — JUDGING router', () => {
+	test('GET /judging/{id}/projects is judge-only and gated on the judging round', async ({
+		authedApi
+	}, testInfo) => {
+		const tag = `judgelist-${Date.now()}-w${testInfo.workerIndex}`;
+		const event = await createTestEvent(authedApi, { name: unique('JudgeList', testInfo) });
+		await attendEvent(authedApi, event.id);
+		const project = await createProject(authedApi, {
+			name: unique('JudgeList P', testInfo),
+			description: '',
+			event_id: event.id,
+			repo: 'https://github.com/heycastawhat/kiwihacks-podium',
+			image_url: 'https://raw.githubusercontent.com/heycastawhat/kiwihacks-podium/main/README.md'
+		});
+
+		// Event owner is not a judge → 403
+		const notAJudge = await judgeGetProjects(authedApi, event.id);
+		expect(notAJudge.status()).toBe(403);
+
+		const judge = await createJudgeAndGetToken(
+			secondaryUserEmail('admin', tag),
+			'List Judge',
+			event.id
+		);
+		try {
+			// Judging round hasn't been opened yet
+			const roundClosed = await judgeGetProjects(judge.authedApi, event.id);
+			expect(roundClosed.status()).toBe(403);
+
+			await setRoundOpen(authedApi, event.id, 'judging_open', true);
+			const resp = await judgeGetProjects(judge.authedApi, event.id);
+			expect(resp.ok()).toBe(true);
+			const body = await resp.json();
+			const listed = body.projects.find((p: { id: string }) => p.id === project.id);
+			expect(listed).toBeDefined();
+			expect(listed.my_score).toBeNull();
+			expect(listed).toHaveProperty('owner_display_name');
+		} finally {
+			await judge.authedApi.dispose();
+			await judge.api.dispose();
+		}
+	});
+
+	test('PUT /judging/{id}/scores/{project_id} upserts a score and blocks self-scoring', async ({
+		authedApi
+	}, testInfo) => {
+		const tag = `judgescore-${Date.now()}-w${testInfo.workerIndex}`;
+		const event = await createTestEvent(authedApi, { name: unique('JudgeScore', testInfo) });
+		await attendEvent(authedApi, event.id);
+		const project = await createProject(authedApi, {
+			name: unique('JudgeScore P', testInfo),
+			description: '',
+			event_id: event.id,
+			repo: 'https://github.com/heycastawhat/kiwihacks-podium',
+			image_url: 'https://raw.githubusercontent.com/heycastawhat/kiwihacks-podium/main/README.md'
+		});
+		await setRoundOpen(authedApi, event.id, 'judging_open', true);
+
+		const judge = await createJudgeAndGetToken(
+			secondaryUserEmail('admin', tag),
+			'Scoring Judge',
+			event.id
+		);
+		try {
+			const created = await judgeScoreProject(judge.authedApi, event.id, project.id, {
+				originality: 5,
+				technicality: 6,
+				theme: 7,
+				usability: 8
+			});
+			expect(created.ok()).toBe(true);
+			expect((await created.json()).total).toBe(26);
+
+			// Re-scoring replaces the judge's previous score
+			const updated = await judgeScoreProject(judge.authedApi, event.id, project.id, {
+				originality: 10,
+				technicality: 10,
+				theme: 10,
+				usability: 10
+			});
+			expect(updated.ok()).toBe(true);
+			expect((await updated.json()).total).toBe(40);
+
+			// Criteria are ints 1-10
+			const outOfRange = await judgeScoreProject(judge.authedApi, event.id, project.id, {
+				originality: 11,
+				technicality: 1,
+				theme: 1,
+				usability: 1
+			});
+			expect(outOfRange.status()).toBe(422);
+
+			// A judge cannot score a project they own
+			await attendEvent(judge.authedApi, event.id);
+			const ownProject = await createProject(judge.authedApi, {
+				name: unique('Judge Own P', testInfo),
+				description: '',
+				event_id: event.id,
+				repo: 'https://github.com/heycastawhat/kiwihacks-podium',
+				image_url:
+					'https://raw.githubusercontent.com/heycastawhat/kiwihacks-podium/main/README.md'
+			});
+			const selfScore = await judgeScoreProject(judge.authedApi, event.id, ownProject.id, {
+				originality: 10,
+				technicality: 10,
+				theme: 10,
+				usability: 10
+			});
+			expect(selfScore.status()).toBe(403);
+		} finally {
+			await judge.authedApi.dispose();
+			await judge.api.dispose();
+		}
+	});
+
+	test('GET /judging/{id}/results ranks projects for judges and the owner', async ({
+		authedApi
+	}, testInfo) => {
+		const tag = `judgeresults-${Date.now()}-w${testInfo.workerIndex}`;
+		const event = await createTestEvent(authedApi, { name: unique('JudgeResults', testInfo) });
+		await attendEvent(authedApi, event.id);
+		const low = await createProject(authedApi, {
+			name: unique('Low P', testInfo),
+			description: '',
+			event_id: event.id,
+			repo: 'https://github.com/heycastawhat/kiwihacks-podium',
+			image_url: 'https://raw.githubusercontent.com/heycastawhat/kiwihacks-podium/main/README.md'
+		});
+		const high = await createProject(authedApi, {
+			name: unique('High P', testInfo),
+			description: '',
+			event_id: event.id,
+			repo: 'https://github.com/heycastawhat/kiwihacks-podium',
+			image_url: 'https://raw.githubusercontent.com/heycastawhat/kiwihacks-podium/main/README.md'
+		});
+		await setRoundOpen(authedApi, event.id, 'judging_open', true);
+
+		const judge = await createJudgeAndGetToken(
+			secondaryUserEmail('admin', tag),
+			'Results Judge',
+			event.id
+		);
+		try {
+			await judgeScoreProject(judge.authedApi, event.id, low.id, {
+				originality: 2,
+				technicality: 2,
+				theme: 2,
+				usability: 2
+			});
+			await judgeScoreProject(judge.authedApi, event.id, high.id, {
+				originality: 9,
+				technicality: 9,
+				theme: 9,
+				usability: 9
+			});
+
+			// Judges can read the standings too
+			const judgeView = await getJudgingResults(judge.authedApi, event.id);
+			expect(judgeView.ok()).toBe(true);
+		} finally {
+			await judge.authedApi.dispose();
+			await judge.api.dispose();
+		}
+
+		const resp = await getJudgingResults(authedApi, event.id);
+		expect(resp.ok()).toBe(true);
+		const results = await resp.json();
+		expect(results[0].project_id).toBe(high.id);
+		expect(results[0].judge_count).toBe(1);
+		expect(results[0].judge_score).toBe(36);
+		expect(results[0].averages.originality).toBe(9);
+		expect(results[0].is_finalist).toBe(false);
+
+		// Neither a judge nor the owner → 403
+		const outsiderTag = `resultsout-${Date.now()}-w${testInfo.workerIndex}`;
+		const { authedApi: outsiderApi, api: outsiderBase } = await createUserAndGetToken(
+			secondaryUserEmail('attendee', outsiderTag),
+			'Results Outsider'
+		);
+		try {
+			const denied = await getJudgingResults(outsiderApi, event.id);
+			expect(denied.status()).toBe(403);
+		} finally {
+			await outsiderApi.dispose();
+			await outsiderBase.dispose();
+		}
+	});
+
+	test('judging access is scoped to one event', async ({ authedApi }, testInfo) => {
+		const tag = `judgescope-${Date.now()}-w${testInfo.workerIndex}`;
+		const event = await createTestEvent(authedApi, { name: unique('ScopeA', testInfo) });
+		const other = await createTestEvent(authedApi, { name: unique('ScopeB', testInfo) });
+		await setRoundOpen(authedApi, event.id, 'judging_open', true);
+		await setRoundOpen(authedApi, other.id, 'judging_open', true);
+
+		const judge = await createJudgeAndGetToken(
+			secondaryUserEmail('admin', tag),
+			'Scoped Judge',
+			event.id
+		);
+		try {
+			expect((await judgeGetProjects(judge.authedApi, event.id)).ok()).toBe(true);
+			// Judging one event grants nothing on another
+			expect((await judgeGetProjects(judge.authedApi, other.id)).status()).toBe(403);
+			expect((await getJudgingResults(judge.authedApi, other.id)).status()).toBe(403);
+		} finally {
+			await judge.authedApi.dispose();
+			await judge.api.dispose();
+		}
+	});
+
+	test('GET/POST /events/admin/{id}/judges manages judges by email', async ({
+		authedApi
+	}, testInfo) => {
+		const tag = `judgecrud-${Date.now()}-w${testInfo.workerIndex}`;
+		const event = await createTestEvent(authedApi, { name: unique('JudgeCrud', testInfo) });
+		await setRoundOpen(authedApi, event.id, 'judging_open', true);
+
+		expect(await (await adminGetJudges(authedApi, event.id)).json()).toEqual([]);
+
+		const email = secondaryUserEmail('attendee', tag);
+		// No account with that email yet
+		expect((await adminAddJudge(authedApi, event.id, email)).status()).toBe(404);
+
+		const { authedApi: judgeApi, api: judgeBase } = await createUserAndGetToken(
+			email,
+			'Crud Judge'
+		);
+		try {
+			const added = await adminAddJudge(authedApi, event.id, email);
+			expect(added.ok()).toBe(true);
+			expect((await added.json()).email).toBe(email);
+
+			// Adding twice is a no-op, not an error
+			expect((await adminAddJudge(authedApi, event.id, email)).ok()).toBe(true);
+			const listed = await (await adminGetJudges(authedApi, event.id)).json();
+			expect(listed).toHaveLength(1);
+			expect((await judgeGetProjects(judgeApi, event.id)).ok()).toBe(true);
+
+			// The owner already sees everything a judge does
+			const me = await getCurrentUser(authedApi);
+			expect((await adminAddJudge(authedApi, event.id, me.email)).status()).toBe(400);
+
+			expect((await adminRemoveJudge(authedApi, event.id, listed[0].id)).ok()).toBe(true);
+			expect(await (await adminGetJudges(authedApi, event.id)).json()).toEqual([]);
+			expect((await judgeGetProjects(judgeApi, event.id)).status()).toBe(403);
+		} finally {
+			await judgeApi.dispose();
+			await judgeBase.dispose();
+		}
+	});
+
+	test('POST /events/admin/{id}/judge-code + POST /judging/redeem make a judge', async ({
+		authedApi
+	}, testInfo) => {
+		const tag = `judgecode-${Date.now()}-w${testInfo.workerIndex}`;
+		const event = await createTestEvent(authedApi, { name: unique('JudgeCode', testInfo) });
+		await setRoundOpen(authedApi, event.id, 'judging_open', true);
+
+		const first = await adminRotateJudgeCode(authedApi, event.id);
+		expect(first.ok()).toBe(true);
+		const { judge_code: code } = await first.json();
+		expect(code).toMatch(/^\d{6}$/);
+
+		const { authedApi: userApi, api: userBase } = await createUserAndGetToken(
+			secondaryUserEmail('attendee', tag),
+			'Code Redeemer'
+		);
+		try {
+			// Not a judge yet
+			expect((await judgeGetProjects(userApi, event.id)).status()).toBe(403);
+
+			expect((await redeemJudgeCode(userApi, '000')).status()).toBe(400);
+			expect((await redeemJudgeCode(userApi, '999999')).status()).toBe(404);
+
+			const redeemed = await redeemJudgeCode(userApi, code);
+			expect(redeemed.ok()).toBe(true);
+			expect((await redeemed.json()).event_slug).toBe(event.slug);
+
+			expect((await getCurrentUser(userApi)).judge_event_ids).toContain(event.id);
+			expect((await judgeGetProjects(userApi, event.id)).ok()).toBe(true);
+
+			// Rotating invalidates the old code
+			const second = await adminRotateJudgeCode(authedApi, event.id);
+			expect(second.ok()).toBe(true);
+			expect((await second.json()).judge_code).not.toBe(code);
+			expect((await redeemJudgeCode(userApi, code)).status()).toBe(404);
+		} finally {
+			await userApi.dispose();
+			await userBase.dispose();
+		}
+	});
 });
 
 test.describe('API coverage — EVENT PHASE lifecycle', () => {
-	// Covers the DRAFT → SUBMISSION → VOTING → CLOSED state machine by walking
-	// an event through each phase via PATCH and checking that gated endpoints
-	// (vote, public leaderboard) flip their access accordingly.
-	test('phase transitions gate voting and leaderboard endpoints', async ({
+	// The phase gates the public leaderboard (CLOSED only); the voting round is a
+	// separate switch (voting_open). This walks both and checks each gate.
+	test('phase gates the leaderboard, voting_open gates the ballot', async ({
 		authedApi
 	}, testInfo) => {
 		const event = await createTestEvent(authedApi, { name: unique('Lifecycle', testInfo) });
@@ -558,15 +912,15 @@ test.describe('API coverage — EVENT PHASE lifecycle', () => {
 				repo: 'https://github.com/heycastawhat/kiwihacks-podium',
 				image_url: 'https://raw.githubusercontent.com/heycastawhat/kiwihacks-podium/main/README.md'
 			});
-			// Flip the event to SUBMISSION — voting should now be closed.
+			// Closing the voting round blocks the ballot, whatever the phase says.
+			await setRoundOpen(authedApi, event.id, 'voting_open', false);
 			const submissionResp = await adminPatchEvent(authedApi, event.id, { phase: 'submission' });
 			expect(submissionResp.ok()).toBe(true);
 			const noVote = await voteForProjects(voterApi, event.id, [project.id]);
 			expect(noVote.status()).toBe(403);
 
-			// Back to VOTING — vote succeeds.
-			const votingResp = await adminPatchEvent(authedApi, event.id, { phase: 'voting' });
-			expect(votingResp.ok()).toBe(true);
+			// Reopening it lets the ballot through while the phase is still SUBMISSION.
+			await setRoundOpen(authedApi, event.id, 'voting_open', true);
 			const okVote = await voteForProjects(voterApi, event.id, [project.id]);
 			expect(okVote.ok()).toBe(true);
 

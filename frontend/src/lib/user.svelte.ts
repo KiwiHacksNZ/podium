@@ -15,6 +15,7 @@ export const defaultUser: UserPrivate = {
   has_ysws_pii: false,
   is_superadmin: false,
   is_admin: false,
+  judge_event_ids: [],
   admin_permissions: [],
 };
 

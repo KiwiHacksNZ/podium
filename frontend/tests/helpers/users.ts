@@ -72,3 +72,22 @@ export async function createUserAndGetToken(
 export function secondaryUserEmail(prefix: 'organizer' | 'attendee' | 'admin', tag: string): string {
 	return `${prefix}+${tag}@test.local`;
 }
+
+/**
+ * Create a user who judges one specific event, using the test-only grant
+ * endpoint (POST /judging/test/{event_id}/grant-judge, gated on
+ * enable_test_endpoints). Judging access is always per event — in production a
+ * judge either redeems the event's 6-digit code or the organizer adds them.
+ */
+export async function createJudgeAndGetToken(
+	email: string,
+	displayName: string,
+	eventId: string
+): Promise<{ token: string; api: APIRequestContext; authedApi: APIRequestContext }> {
+	const judge = await createUserAndGetToken(email, displayName);
+	const resp = await judge.authedApi.post(`${API_BASE_URL}/judging/test/${eventId}/grant-judge`);
+	if (!resp.ok()) {
+		throw new Error(`Failed to grant judge access: ${resp.status()} ${await resp.text()}`);
+	}
+	return judge;
+}

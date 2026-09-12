@@ -32,6 +32,9 @@ from podium.limiter import limiter
 
 router = APIRouter(tags=["auth"])
 
+# Everything that serializes a user through user_to_private needs these loaded.
+USER_LOADS = (selectinload(User.votes), selectinload(User.events_judging))
+
 SECRET_KEY = settings.jwt_secret
 ALGORITHM = str(settings.jwt_algorithm)
 ACCESS_TOKEN_EXPIRE_MINUTES: int = settings.jwt_expire_minutes  # type: ignore
@@ -194,7 +197,7 @@ async def verify_token(
         raise HTTPException(status_code=400, detail="Invalid or already-used token")
     await session.commit()
 
-    stmt = select(User).where(User.email == email).options(selectinload(User.votes))
+    stmt = select(User).where(User.email == email).options(*USER_LOADS)
     user = await scalar_one_or_none(session, stmt)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -311,7 +314,7 @@ async def sso_callback(
     first_name: str = identity.get("first_name", "").strip()
     last_name: str = identity.get("last_name", "").strip()
 
-    stmt = select(User).where(User.email == email).options(selectinload(User.votes))
+    stmt = select(User).where(User.email == email).options(*USER_LOADS)
     user = await scalar_one_or_none(session, stmt)
     if user is None:
         user = User(
@@ -322,7 +325,7 @@ async def sso_callback(
         )
         session.add(user)
         await session.commit()
-        stmt = select(User).where(User.email == email).options(selectinload(User.votes))
+        stmt = select(User).where(User.email == email).options(*USER_LOADS)
         user = await scalar_one_or_none(session, stmt)
     elif not user.first_name and first_name:
         # Backfill name for existing users who registered before SSO name scope was added
@@ -330,7 +333,7 @@ async def sso_callback(
         user.last_name = last_name
         user.display_name = default_display_name(first_name, last_name)
         await session.commit()
-        stmt = select(User).where(User.email == email).options(selectinload(User.votes))
+        stmt = select(User).where(User.email == email).options(*USER_LOADS)
         user = await scalar_one_or_none(session, stmt)
 
     # Issue a short-lived magic-link token so the existing frontend /verify flow handles the rest
@@ -373,7 +376,7 @@ async def get_current_user(
     except PyJWTError:
         raise BAD_AUTH
 
-    stmt = select(User).where(User.email == email).options(selectinload(User.votes))
+    stmt = select(User).where(User.email == email).options(*USER_LOADS)
     user = await scalar_one_or_none(session, stmt)
     if user is None:
         raise BAD_AUTH

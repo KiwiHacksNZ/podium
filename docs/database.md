@@ -2,6 +2,10 @@
 
 PostgreSQL with async SQLModel ORM. Models live in `backend/podium/db/postgres/`.
 
+Computed fields that read a relationship need it eager-loaded: `Project.points` needs
+`Project.votes`, `Project.judge_score`/`judge_count` need `Project.judge_scores`, and
+`Event.max_votes_per_user`/`finalist_count` need `Event.projects`.
+
 ## Query Patterns
 
 Use `session.get()` for primary key lookups:

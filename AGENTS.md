@@ -35,5 +35,5 @@ Do not create summary documents of your actions unless the user specifically req
 
 - **Stack:** SvelteKit (Svelte 5) + FastAPI + async PostgreSQL
 - **Auth:** Magic link via Loops API
-- **Models:** `backend/podium/db/postgres/` (User, Event, Project, Vote, Referral)
+- **Models:** `backend/podium/db/postgres/` (User, Event, Project, Vote, JudgeScore, Referral)
 - **API client:** Regenerate with `cd frontend && bun run openapi-ts`

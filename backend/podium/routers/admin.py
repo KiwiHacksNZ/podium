@@ -6,10 +6,11 @@ and can remove attendees.
 """
 
 from datetime import datetime
+from secrets import randbelow
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, Path
+from fastapi import APIRouter, Body, Depends, HTTPException, Path
 from pydantic import BaseModel
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -19,6 +20,7 @@ from sqlalchemy.orm import selectinload, Load
 from podium.db.postgres import (
     User,
     Event,
+    EventJudgeLink,
     EventPrivate,
     EventUpdate,
     Project,
@@ -31,7 +33,8 @@ from podium.db.postgres import (
     scalar_all,
 )
 from podium.routers.auth import get_current_user
-from podium.constants import BAD_ACCESS
+from podium.constants import BAD_ACCESS, FINALIST_COUNT
+from podium.cache import cache_delete
 
 router = APIRouter(prefix="/events/admin", tags=["events"])
 
@@ -74,6 +77,21 @@ class VoteSuspicionResponse(BaseModel):
     voter_id: UUID | None = None
     ip_address: str = ""
     count: int = 0
+
+
+class JudgeEmail(BaseModel):
+    email: str
+
+
+class JudgeCodeResponse(BaseModel):
+    judge_code: str
+
+
+class FinalistResponse(BaseModel):
+    project_id: UUID
+    name: str
+    judge_score: float
+    judge_count: int
 
 
 class ReferralResponse(BaseModel):
@@ -163,6 +181,160 @@ async def remove_attendee(
     event.attendees = [a for a in event.attendees if a.id != user_id]
     await session.commit()
     return {"message": "Attendee removed"}
+
+
+@router.get("/{event_id}/judges")
+async def get_event_judges(
+    event_id: Annotated[UUID, Path(title="Event ID")],
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[UserAttendee]:
+    """The users judging this event."""
+    event = await get_owned_event(event_id, user, session, selectinload(Event.judges))
+    return [
+        UserAttendee(
+            id=j.id,
+            email=j.email,
+            display_name=j.display_name,
+            first_name=j.first_name,
+            last_name=j.last_name,
+        )
+        for j in event.judges
+    ]
+
+
+@router.post("/{event_id}/add-judge")
+async def add_judge(
+    event_id: Annotated[UUID, Path(title="Event ID")],
+    body: JudgeEmail,
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> UserAttendee:
+    """Add an existing user as a judge for this event, by email."""
+    event = await get_owned_event(event_id, user, session, selectinload(Event.judges))
+
+    email = body.email.strip().lower()
+    judge = await scalar_one_or_none(session, select(User).where(User.email == email))
+    if not judge:
+        raise HTTPException(
+            status_code=404, detail="No account with that email — ask them to sign up first"
+        )
+    if judge.id == event.owner_id:
+        raise HTTPException(
+            status_code=400, detail="The event owner already sees everything a judge does"
+        )
+
+    if judge.id not in {j.id for j in event.judges}:
+        session.add(EventJudgeLink(event_id=event_id, user_id=judge.id))
+        await session.commit()
+
+    return UserAttendee(
+        id=judge.id,
+        email=judge.email,
+        display_name=judge.display_name,
+        first_name=judge.first_name,
+        last_name=judge.last_name,
+    )
+
+
+@router.post("/{event_id}/remove-judge")
+async def remove_judge(
+    event_id: Annotated[UUID, Path(title="Event ID")],
+    user_id: Annotated[UUID, Body(embed=True)],
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """Remove a judge from this event. Any scores they already gave are kept."""
+    event = await get_owned_event(event_id, user, session, selectinload(Event.judges))
+    event.judges = [j for j in event.judges if j.id != user_id]
+    await session.commit()
+    return {"message": "Judge removed"}
+
+
+@router.post("/{event_id}/judge-code")
+async def rotate_judge_code(
+    event_id: Annotated[UUID, Path(title="Event ID")],
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> JudgeCodeResponse:
+    """Generate a fresh 6-digit judge code for this event, replacing any existing one.
+
+    Hand the code to your judges; they claim judge access with it at /judge.
+    Rotating invalidates the old code but does not revoke anyone's judge access.
+    """
+    event = await get_owned_event(event_id, user, session)
+
+    for _ in range(10):
+        code = f"{randbelow(1_000_000):06d}"
+        taken = await scalar_one_or_none(
+            session, select(Event).where(Event.judge_code == code)
+        )
+        if not taken:
+            event.judge_code = code
+            await session.commit()
+            return JudgeCodeResponse(judge_code=code)
+
+    raise HTTPException(
+        status_code=500, detail="Could not generate an unused judge code"
+    )
+
+
+@router.post("/{event_id}/finalists")
+async def lock_in_finalists(
+    event_id: Annotated[UUID, Path(title="Event ID")],
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[FinalistResponse]:
+    """Lock in the top-scoring projects from judging as the attendee ballot.
+
+    Ranks every project by mean judge score (ties broken by how many judges scored
+    it) and marks the top FINALIST_COUNT as finalists, clearing any previous set.
+    Only finalists appear on the ballot once this has run.
+
+    Can be re-run while judges are still scoring, but not once attendees have started
+    voting — changing the ballot then would leave already-cast votes on projects that
+    are no longer finalists.
+    """
+    await get_owned_event(event_id, user, session)
+
+    votes_cast = await scalar_one_or_none(
+        session, select(Vote).where(Vote.event_id == event_id).limit(1)
+    )
+    if votes_cast:
+        raise HTTPException(
+            status_code=400,
+            detail="Attendees have already started voting — finalists are locked",
+        )
+
+    projects = await scalar_all(
+        session,
+        select(Project)
+        .where(Project.event_id == event_id)
+        .options(selectinload(Project.judge_scores)),
+    )
+    scored = [p for p in projects if p.judge_count]
+    if not scored:
+        raise HTTPException(
+            status_code=400, detail="No judge scores yet — nothing to rank"
+        )
+
+    scored.sort(key=lambda p: (p.judge_score, p.judge_count), reverse=True)
+    finalists = scored[:FINALIST_COUNT]
+    finalist_ids = {p.id for p in finalists}
+    for project in projects:
+        project.is_finalist = project.id in finalist_ids
+
+    await session.commit()
+    await cache_delete(f"leaderboard:{event_id}")
+    return [
+        FinalistResponse(
+            project_id=p.id,
+            name=p.name,
+            judge_score=p.judge_score,
+            judge_count=p.judge_count,
+        )
+        for p in finalists
+    ]
 
 
 @router.get("/{event_id}/leaderboard", response_model=list[ProjectPrivate])

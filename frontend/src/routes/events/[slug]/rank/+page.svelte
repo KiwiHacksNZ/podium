@@ -11,13 +11,33 @@
   const { data } = $props();
   let selectedProjects: string[] = $state([]);
 
+  const ordinals = ["1st", "2nd", "3rd"];
+  function ordinal(index: number) {
+    return ordinals[index] ?? `${index + 1}th`;
+  }
+  // Ballot order is the rank: 1st choice is worth 3 points, 2nd 2, 3rd 1.
+  function points(index: number) {
+    return Math.max(1, 3 - index);
+  }
+
+  function rankLabelFor(projectId: string): string | null {
+    const index = selectedProjects.indexOf(projectId);
+    return index === -1 ? null : `${ordinal(index)} choice`;
+  }
+
+  const selectedInOrder = $derived(
+    selectedProjects
+      .map((id) => data.projects.find((p) => p.id === id))
+      .filter((p): p is (typeof data.projects)[number] => p !== undefined),
+  );
+
   function toggleProjectSelection(projectId: string) {
     if (selectedProjects.includes(projectId)) {
-      // If the project is already selected, remove it from the list
+      // Deselecting is also how you reorder: drop a pick and re-add it later to
+      // move it down the ballot.
       selectedProjects = selectedProjects.filter((id) => id !== projectId);
     } else {
       if (selectedProjects.length < data.toSelect) {
-        // If the project is not selected and the limit is not reached, add it to the list
         selectedProjects = [...selectedProjects, projectId];
       }
     }
@@ -53,10 +73,18 @@
 {:else}
   <div class="p-4 bg-warning text-center rounded-xl max-w-2xl mx-auto">
     <p class="text-warning-content text-sm">
-      You can vote for {data.toSelect - selectedProjects.length} more projects in
-      this event. Projects below don't include projects you have already voted for
-      or projects you own or collaborate on. Click on a project to select it for
-      voting.
+      {#if data.finalistCount > 0}
+        These are the {data.finalistCount} finalists chosen by the judges. Rank
+        them in order: click projects in the order you like them, from favorite
+        first. Your 1st choice is worth 3 points, 2nd choice 2 points and 3rd
+        choice 1 point.
+      {:else}
+        Rank projects in order: click projects in the order you like them, from
+        favorite first. Your 1st choice is worth 3 points, 2nd choice 2 points
+        and 3rd choice 1 point.
+      {/if}
+      You can pick {data.toSelect - selectedProjects.length} more. Click a
+      selected project again to remove it and reorder your ballot.
     </p>
   </div>
   <div class="container mx-auto p-6">
@@ -69,9 +97,44 @@
           isSelected={selectedProjects.includes(project.id)}
           toggle={() => toggleProjectSelection(project.id)}
           selectable={true}
+          rankLabel={rankLabelFor(project.id)}
         />
       {/each}
     </div>
+
+    <div class="card bg-base-200 mt-6">
+      <div class="card-body">
+        <h2 class="card-title text-base">Your ballot</h2>
+        {#if selectedProjects.length === 0}
+          <p class="text-base-content/70 text-sm">
+            Nothing picked yet. Click a project to make it your 1st choice.
+          </p>
+        {:else}
+          <ol class="list-decimal list-inside space-y-1">
+            {#each selectedInOrder as project, index (project.id)}
+              <li class="text-sm">
+                <span class="badge badge-info badge-sm mr-2"
+                  >{ordinal(index)} choice</span
+                >
+                <span class="font-medium">{project.name}</span>
+                <span class="text-base-content/70">
+                  — {points(index)}
+                  {points(index) === 1 ? "point" : "points"}</span
+                >
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs ml-2"
+                  onclick={() => toggleProjectSelection(project.id)}
+                >
+                  Remove
+                </button>
+              </li>
+            {/each}
+          </ol>
+        {/if}
+      </div>
+    </div>
+
     <!-- Not disabling if user has already voted since this is hidden then anyway. Also not disabling if projects is under toSelect since people can come back. -->
     <button class="btn-block btn btn-warning mt-4" use:asyncClick={submitVote}
       >Submit Vote</button

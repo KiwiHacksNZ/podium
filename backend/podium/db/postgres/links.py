@@ -2,7 +2,7 @@
 Junction tables for many-to-many relationships.
 
 SQLModel requires explicit link tables for M2M - there's no auto-creation.
-These connect: Event <-> User (attendees) and Project <-> User (collaborators).
+These connect: Event <-> User (attendees and judges) and Project <-> User (collaborators).
 
 ## Why surrogate PKs?
 
@@ -23,6 +23,21 @@ class EventAttendeeLink(SQLModel, table=True):
     """Links events to their attendees (many-to-many)."""
 
     __tablename__: str = "event_attendees"
+    __table_args__ = (UniqueConstraint("event_id", "user_id"),)
+
+    # Surrogate PK for Mathesar Extend compatibility (requires single-column PK)
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    event_id: UUID = Field(foreign_key="events.id")
+    user_id: UUID = Field(foreign_key="users.id")
+
+
+class EventJudgeLink(SQLModel, table=True):
+    """Links events to the users judging them (many-to-many).
+
+    Judging is scoped per event: a judge for one event has no access to another.
+    """
+
+    __tablename__: str = "event_judges"
     __table_args__ = (UniqueConstraint("event_id", "user_id"),)
 
     # Surrogate PK for Mathesar Extend compatibility (requires single-column PK)

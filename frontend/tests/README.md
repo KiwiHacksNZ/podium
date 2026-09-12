@@ -31,12 +31,18 @@ env vars. Playwright boots both servers on demand (see `playwright.config.ts`).
 | `wizard.spec.ts` | Project submission wizard routing |
 | `permissions.spec.ts` | Admin panel visibility + leaderboard access |
 | `journey.spec.ts` | Full hackathon UI journey (organizer → attendee → vote → admin) |
+| `judging.spec.ts` | Judge scoring, judge-only access, finalist lock-in, ranked ballot, weighted leaderboard |
 | `api-coverage.spec.ts` | **Every backend endpoint hit at least once via direct API calls** |
 
 Helpers: `helpers/api.ts` (endpoint wrappers), `helpers/users.ts` (secondary
-user setup), `helpers/jwt.ts` (magic-link JWT signing), `fixtures/auth.ts`
-(worker-scoped authed page + API contexts), `utils/data.ts` (`unique()` for
-collision-free data across workers).
+user setup, judge accounts), `helpers/jwt.ts` (magic-link JWT
+signing), `fixtures/auth.ts` (worker-scoped authed page + API contexts),
+`utils/data.ts` (`unique()` for collision-free data across workers).
+
+`createJudgeAndGetToken(email, name, eventId)` grants judging access for one
+event through `POST /judging/test/{event_id}/grant-judge`, which only exists
+when `enable_test_endpoints` is on. In production a judge either redeems the
+event's 6-digit code or the organizer adds them by email.
 
 ## Coverage guarantee
 

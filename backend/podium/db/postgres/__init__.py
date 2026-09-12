@@ -16,7 +16,7 @@ Query patterns:
 """
 
 from podium.db.postgres.base import get_session, get_ro_session, engine, init_db, scalar_one_or_none, scalar_all
-from podium.db.postgres.links import EventAttendeeLink, ProjectCollaboratorLink
+from podium.db.postgres.links import EventAttendeeLink, EventJudgeLink, ProjectCollaboratorLink
 from podium.db.postgres.user import User, UserPublic, UserPrivate, UserInternal, UserSignup, UserUpdate, user_to_private, default_display_name
 from podium.db.postgres.event import Event, EventPublic, EventPrivate, EventUpdate
 from podium.db.postgres.project import (
@@ -27,6 +27,11 @@ from podium.db.postgres.project import (
     ProjectUpdate,
 )
 from podium.db.postgres.vote import Vote
+from podium.db.postgres.judge_score import (
+    JudgeScore,
+    JudgeScorePublic,
+    JudgeScoreUpsert,
+)
 from podium.db.postgres.vote_audit import VoteAuditLog
 from podium.db.postgres.referral import Referral
 from podium.db.postgres.magic_link import MagicLink
@@ -41,6 +46,7 @@ __all__ = [
     "scalar_all",
     # Link tables (many-to-many)
     "EventAttendeeLink",
+    "EventJudgeLink",
     "ProjectCollaboratorLink",
     # User
     "User",
@@ -65,6 +71,10 @@ __all__ = [
     # Vote & Referral
     "Vote",
     "VoteAuditLog",
+    # Judging
+    "JudgeScore",
+    "JudgeScorePublic",
+    "JudgeScoreUpsert",
     "Referral",
     "MagicLink",
 ]

@@ -41,11 +41,15 @@ export type EventPrivate = {
     phase: string;
     demo_links_optional: boolean;
     require_ysws_pii: boolean;
+    judging_open: boolean;
+    voting_open: boolean;
     max_votes_per_user: number;
+    finalist_count: number;
     repo_validation: string;
     demo_validation: string;
     owner_id: string;
     custom_validator: (string | null);
+    judge_code?: (string | null);
     feature_flags_csv: string;
     deleted_at?: (string | null);
 };
@@ -61,7 +65,10 @@ export type EventPublic = {
     phase: string;
     demo_links_optional: boolean;
     require_ysws_pii: boolean;
+    judging_open: boolean;
+    voting_open: boolean;
     max_votes_per_user: number;
+    finalist_count: number;
     repo_validation: string;
     demo_validation: string;
 };
@@ -73,6 +80,8 @@ export type EventUpdate = {
     name?: (string | null);
     description?: (string | null);
     phase?: (string | null);
+    judging_open?: (boolean | null);
+    voting_open?: (boolean | null);
     demo_links_optional?: (boolean | null);
     require_ysws_pii?: (boolean | null);
     repo_validation?: (string | null);
@@ -125,6 +134,7 @@ export type ProjectPrivate = {
     demo: string;
     description: string;
     points: number;
+    is_finalist?: boolean;
     owner_id: string;
     owner_display_name?: string;
     collaborator_display_names?: Array<(string)>;
@@ -147,6 +157,7 @@ export type ProjectPublic = {
     demo: string;
     description: string;
     points: number;
+    is_finalist?: boolean;
     owner_id: string;
     owner_display_name?: string;
     collaborator_display_names?: Array<(string)>;
@@ -178,6 +189,8 @@ export type SuperadminEventUpdate = {
     name?: (string | null);
     description?: (string | null);
     phase?: (string | null);
+    judging_open?: (boolean | null);
+    voting_open?: (boolean | null);
     demo_links_optional?: (boolean | null);
     require_ysws_pii?: (boolean | null);
     repo_validation?: (string | null);
@@ -236,6 +249,7 @@ export type UserPrivate = {
     has_ysws_pii?: boolean;
     is_superadmin?: boolean;
     is_admin?: boolean;
+    judge_event_ids?: Array<(string)>;
     admin_permissions?: Array<(string)>;
 };
 

@@ -1,9 +1,13 @@
 from typing import Annotated, Iterable
+from uuid import UUID
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import Load, selectinload
 
 from podium.constants import BAD_ACCESS, DEFAULT_ADMIN_PERMISSIONS, PlatformAdminPermission
-from podium.db.postgres import User
+from podium.db.postgres import Event, User, scalar_one_or_none
 from podium.routers.auth import get_current_user
 
 
@@ -49,3 +53,23 @@ def require_admin_permission(permission: str):
         return user
 
     return dependency
+
+
+async def get_judged_event(
+    event_id: UUID, user: User, session: AsyncSession, *extra_loads: Load
+) -> Event:
+    """Load an event by ID, asserting the user judges it (or is a superadmin).
+
+    Judging is scoped per event — judging one event grants nothing on another.
+    """
+    stmt = (
+        select(Event)
+        .where(Event.id == event_id)
+        .options(selectinload(Event.judges), *extra_loads)
+    )
+    event = await scalar_one_or_none(session, stmt)
+    if not event or event.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if not user.is_superadmin and user.id not in {j.id for j in event.judges}:
+        raise BAD_ACCESS
+    return event

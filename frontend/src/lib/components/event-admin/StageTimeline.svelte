@@ -19,11 +19,23 @@
     phase = event.phase;
   });
 
-  // Keep in sync with backend EventPhase enum (backend/podium/constants.py)
+  // Keep in sync with backend EventPhase enum (backend/podium/constants.py).
+  // The stage is a label plus visibility/leaderboard control — the judging and
+  // voting rounds are opened with the switches below (RoundSwitches.svelte).
   const stages = [
     { id: "draft", label: "Draft", description: "Hidden — not yet accepting submissions" },
     { id: "submission", label: "Submission", description: "Open for project submissions" },
-    { id: "voting", label: "Voting", description: "Submissions closed, voting is open" },
+    {
+      id: "judging",
+      label: "Judging",
+      description:
+        "Submissions closed. Open judge scoring below, then lock in the top 5 finalists.",
+    },
+    {
+      id: "voting",
+      label: "Voting",
+      description: "Finalists picked. Open attendee voting below.",
+    },
     { id: "closed", label: "Closed", description: "Voting closed, leaderboard visible" },
   ] as const;
 
