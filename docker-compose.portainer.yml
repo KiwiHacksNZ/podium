@@ -45,5 +45,11 @@ services:
       retries: 5
       start_period: 20s
 
+# External so a Portainer rebuild re-attaches the existing data regardless of
+# stack name. This is the live volume created by the original CLI deploy; do not
+# rename it or Postgres will come up empty. Create it once with:
+#   docker volume create kiwihacks-podium_podium_pgdata
 volumes:
   podium_pgdata:
+    external: true
+    name: kiwihacks-podium_podium_pgdata
