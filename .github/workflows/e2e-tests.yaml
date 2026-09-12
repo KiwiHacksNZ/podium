@@ -82,6 +82,10 @@ jobs:
         working-directory: backend
         run: uv run python -m pytest
 
+      - name: Sync SvelteKit
+        working-directory: frontend
+        run: bunx svelte-kit sync
+
       - name: Check frontend
         working-directory: frontend
         env:
