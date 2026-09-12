@@ -218,7 +218,7 @@ async def verify_token(
     )
     # The frontend keeps this token in memory only; browser persistence uses
     # an HttpOnly cookie so XSS cannot read the bearer credential.
-    response = JSONResponse(response.model_dump())
+    response = JSONResponse(response.model_dump(mode="json"))
     return _set_access_cookie(response, access_token)
 
 
