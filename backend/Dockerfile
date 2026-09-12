@@ -1,6 +1,8 @@
 FROM python:3.13-slim
 
 ENV UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PYTHON_PREFERENCE=only-system \
     ENV_FOR_DYNACONF=production \
     PODIUM_UPLOADS_DIR=/app/uploads \
     PATH="/app/.venv/bin:$PATH"
