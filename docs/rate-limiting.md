@@ -15,7 +15,7 @@ Unauthenticated endpoints require a Turnstile CAPTCHA token instead of IP-based 
 `POST /request-login` is intentionally unprotected: the signup flow reuses the same single-use token for both `POST /users/` and the immediate `POST /request-login` call, so validating twice would fail the second. The email rate limiter provides bot protection instead.
 
 **Config:**
-- **Backend:** `PODIUM_TURNSTILE_SECRET_KEY` in Doppler. If empty, server-side verification is skipped — no code change needed.
+- **Backend:** `PODIUM_TURNSTILE_SECRET_KEY` in the environment. If empty, server-side verification is skipped — no code change needed.
 - **Frontend:** `PUBLIC_TURNSTILE_SITE_KEY` needs to be set for the widget to render and work
 
 > ⚠️ **Production**: Both keys must be set. Without `PODIUM_TURNSTILE_SECRET_KEY` the backend accepts any request. Without `PUBLIC_TURNSTILE_SITE_KEY` the widget never renders.

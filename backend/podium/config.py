@@ -145,7 +145,7 @@ settings.validators.register(
 try:
     settings.validators.validate()
 except Exception as e:
-    sys.stderr.write("\n⚠️  Configuration validation failed. Check that:\n  - Doppler is configured correctly (run 'doppler setup')\n  - No stale DOPPLER_TOKEN exists in .env\n  - Required secrets are set in Doppler\n\n")
+    sys.stderr.write("\n⚠️  Configuration validation failed. Check that:\n  - A .env file (or settings.toml/.secrets.toml) exists with the required PODIUM_ vars\n  - PODIUM_DATABASE_URL and PODIUM_JWT_SECRET are set\n\n")
     raise RuntimeError(str(e)) from None
 
 

@@ -5,17 +5,17 @@
 cd backend && uv run ruff check --fix && cd ../frontend && bun run svelte-check
 
 # E2E tests (use npx, not bunx)
-cd frontend && doppler run --config dev -- npx playwright test
+cd frontend && npx playwright test
 
 # Run locally
-doppler run --config dev -- uv run podium        # backend/
+uv run podium        # backend/
 bun dev                                           # frontend/
 
 # Database
 docker compose up -d                              # Start Postgres + NocoDB
-doppler run --config dev -- uv run alembic upgrade head  # Run migrations (backend/)
+uv run alembic upgrade head  # Run migrations (backend/)
 ./scripts/reset-migrate.sh                        # Reset local DB
-doppler run --config dev -- uv run python scripts/seed_debug_data.py  # Seed dev users/event/project (backend/)
+uv run python scripts/seed_debug_data.py  # Seed dev users/event/project (backend/)
 ```
 
 # Documentation

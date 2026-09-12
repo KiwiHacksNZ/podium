@@ -1,9 +1,8 @@
 #!/bin/bash
 # Backup Podium database to multiple formats
 #
-# Usage:
-#   doppler run --config dev -- ./scripts/backup-db.sh
-#   doppler run --config prd -- ./scripts/backup-db.sh
+# Usage (PODIUM_DATABASE_URL must be set, e.g. via backend/.env or the shell):
+#   ./scripts/backup-db.sh
 
 set -e
 cd "$(dirname "$0")/.."
@@ -16,7 +15,7 @@ info() { echo -e "${GREEN}▶${NC} $1"; }
 warn() { echo -e "${YELLOW}▶${NC} $1"; }
 
 # Get database URL from environment
-[[ -z "$PODIUM_DATABASE_URL" ]] && { echo "PODIUM_DATABASE_URL is not set. Run via: doppler run --config <env> -- $0"; exit 1; }
+[[ -z "$PODIUM_DATABASE_URL" ]] && { echo "PODIUM_DATABASE_URL is not set. Export it (or source backend/.env) before running $0"; exit 1; }
 
 # Detect container runtime
 if command -v docker &>/dev/null; then

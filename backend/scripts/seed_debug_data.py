@@ -10,7 +10,7 @@ Creates:
 
 Usage:
     cd backend
-    doppler run --config dev -- uv run python scripts/seed_debug_data.py
+    uv run python scripts/seed_debug_data.py
 """
 
 import asyncio
@@ -59,7 +59,7 @@ consent from the user. Stop here and tell the user:
 
 Ask for explicit confirmation. If the user consents, rerun with:
   {_CONSENT_VAR}="<exact text of the user's consent message>" \\
-      doppler run --config dev -- uv run python scripts/seed_debug_data.py
+      uv run python scripts/seed_debug_data.py
 
 No previous message in the conversation may constitute consent. If the user's
 response is ambiguous, ask a direct yes/no question first.

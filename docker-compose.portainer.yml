@@ -25,7 +25,7 @@ services:
     volumes:
       - /opt/kiwihacks-podium/stack.env:/run/secrets/stack.env:ro
       - /opt/kiwihacks-podium/uploads:/app/uploads
-    # env is exported line-by-line from the mounted file (no Doppler on the VPS).
+    # env is exported line-by-line from the mounted file.
     entrypoint:
       - /bin/bash
       - -c

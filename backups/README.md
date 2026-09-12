@@ -3,8 +3,7 @@
 ## Create Backup
 
 ```bash
-doppler run --config dev -- ./scripts/backup-db.sh
-doppler run --config prd -- ./scripts/backup-db.sh
+./scripts/backup-db.sh
 ```
 
 Creates:
@@ -14,6 +13,6 @@ Creates:
 ## Restore
 
 ```bash
-doppler run --config dev -- ./scripts/restore-db.sh            # latest .dump
-doppler run --config prd -- ./scripts/restore-db.sh backups/podium_20260421_120000.dump  # specific file
+./scripts/restore-db.sh            # latest .dump
+./scripts/restore-db.sh backups/podium_20260421_120000.dump  # specific file
 ```

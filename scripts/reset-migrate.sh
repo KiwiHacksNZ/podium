@@ -97,11 +97,7 @@ if [[ "$FORCE_REMOTE" == false ]]; then
 fi
 
 if [[ "$USE_DOCKER" == false ]]; then
-  # Resolve PODIUM_DATABASE_URL (try Doppler, then env)
-  if [[ -z "$PODIUM_DATABASE_URL" ]]; then
-    PODIUM_DATABASE_URL=$(doppler secrets get PODIUM_DATABASE_URL --config dev --plain 2>/dev/null || true)
-  fi
-  [[ -z "$PODIUM_DATABASE_URL" ]] && error "No Docker container running and PODIUM_DATABASE_URL is not set.\nSet it via env or Doppler."
+  [[ -z "$PODIUM_DATABASE_URL" ]] && error "No Docker container running and PODIUM_DATABASE_URL is not set.\nExport it or source backend/.env."
 
   # Convert async URL to plain psql-compatible URL
   PSQL_URL=$(echo "$PODIUM_DATABASE_URL" | sed 's/+asyncpg//')
@@ -130,7 +126,7 @@ fi
 
 # Run migrations
 info "Running migrations..."
-(cd backend && doppler run --config dev -- uv run alembic upgrade head)
+(cd backend && uv run alembic upgrade head)
 
 # Sync from Postgres URL
 if [[ "$MODE" == "sync" ]]; then

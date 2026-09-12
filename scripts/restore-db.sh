@@ -1,10 +1,9 @@
 #!/bin/bash
 # Restore Podium database from a .dump file
 #
-# Usage:
-#   doppler run --config dev -- ./scripts/restore-db.sh
-#   doppler run --config prd -- ./scripts/restore-db.sh
-#   doppler run --config dev -- ./scripts/restore-db.sh backups/podium_20260421_120000.dump
+# Usage (PODIUM_DATABASE_URL must be set, e.g. via backend/.env or the shell):
+#   ./scripts/restore-db.sh
+#   ./scripts/restore-db.sh backups/podium_20260421_120000.dump
 
 set -e
 cd "$(dirname "$0")/.."
@@ -19,7 +18,7 @@ error() { echo -e "${RED}▶${NC} $1"; exit 1; }
 DUMP_FILE="${1:-$(ls -t backups/*.dump 2>/dev/null | head -1)}"
 [[ -z "$DUMP_FILE" ]]          && error "No .dump file found in backups/"
 [[ ! -f "$DUMP_FILE" ]]        && error "File not found: $DUMP_FILE"
-[[ -z "$PODIUM_DATABASE_URL" ]] && error "PODIUM_DATABASE_URL is not set. Run via: doppler run --config <env> -- $0"
+[[ -z "$PODIUM_DATABASE_URL" ]] && error "PODIUM_DATABASE_URL is not set. Export it or source backend/.env before running $0"
 
 # Detect container runtime
 if command -v docker &>/dev/null; then

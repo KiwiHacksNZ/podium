@@ -10,6 +10,7 @@ fi
 
 echo "Starting backend and frontend..."
 
-doppler run --config dev --preserve-env=PODIUM_DATABASE_URL -- concurrently -n "BACKEND,FRONTEND" -c "cyan,yellow" \
+# Secrets are loaded from backend/.env by Dynaconf (see .env.example).
+concurrently -n "BACKEND,FRONTEND" -c "cyan,yellow" \
   "cd backend && uv run podium" \
   "cd frontend && bun dev"

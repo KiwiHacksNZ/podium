@@ -23,8 +23,8 @@ See [docs/architecture.md](docs/architecture.md) for system details.
 docker compose up -d
 
 # Backend
-cd backend && doppler run --config dev -- uv run alembic upgrade head
-cd backend && doppler run --config dev -- uv run podium
+cd backend && uv run alembic upgrade head
+cd backend && uv run podium
 
 # Frontend (separate terminal)
 cd frontend && bun dev

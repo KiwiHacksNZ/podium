@@ -3,7 +3,7 @@
 Run test-data cleanup directly (same logic as /events/test/cleanup endpoint).
 
 Usage (from backend/):
-  doppler run --config dev -- uv run python scripts/cleanup_test_data.py
+  uv run python scripts/cleanup_test_data.py
 
 This avoids needing the HTTP server to be running.
 """

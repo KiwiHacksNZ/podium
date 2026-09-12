@@ -4,7 +4,7 @@ TUI for managing Podium events and users.
 
 Usage:
     cd backend
-    doppler run --config dev -- uv run python scripts/manage.py
+    uv run python scripts/manage.py
 
 Keybindings:
     q           Quit
@@ -23,7 +23,7 @@ from uuid import UUID
 try:
     from textual import on, work
 except ImportError:
-    print("Error: 'textual' not found. Run this script from the backend/ directory:\n  doppler run --config dev -- uv run scripts/manage.py", file=sys.stderr)
+    print("Error: 'textual' not found. Run this script from the backend/ directory:\n  uv run scripts/manage.py", file=sys.stderr)
     sys.exit(1)
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -470,7 +470,7 @@ class EventManagerApp(App):
         try:
             db = get_db()
             if not db:
-                self.db_error = "Database not configured. Run with: doppler run --config dev -- uv run python scripts/manage.py"
+                self.db_error = "Database not configured. Run with: uv run python scripts/manage.py"
                 self.query_one("#status-bar", Static).update(f"ERROR: {self.db_error}")
                 self.notify(self.db_error, title="No database connection", severity="error", timeout=30, markup=False)
                 return

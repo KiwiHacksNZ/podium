@@ -1,24 +1,5 @@
 {
   "version": "0.2.0",
-  "inputs": [
-    {
-      "id": "doppler_environment",
-      // To manaully run a command with doppler (backend): doppler run --config prd -- uv run ...
-      "description": "Select Doppler environment",
-      "type": "pickString",
-      "options": [
-        {
-          "label": "Development",
-          "value": "dev"
-        },
-        {
-          "label": "Production",
-          "value": "prd"
-        }
-      ],
-      "default": "dev"
-    }
-  ],
   "configurations": [
     {
       // To run bun dev in prod mode:
@@ -36,10 +17,7 @@
       "request": "launch",
       "module": "uvicorn",
       "args": ["podium.main:app", "--reload"],
-      // Alternative: doppler run --config ${input:doppler_environment} -- uv run uvicorn podium.main:app
-      "env": {
-        "DOPPLER_ENV": "${input:doppler_environment}"
-      },
+      // Secrets load from backend/.env via Dynaconf (see .env.example).
       "cwd": "${workspaceFolder}/backend",
       "justMyCode": true
     }

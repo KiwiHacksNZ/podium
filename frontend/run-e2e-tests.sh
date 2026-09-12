@@ -11,8 +11,8 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Note: Backend runs with 'doppler run --config dev' automatically
-# This is handled by Playwright config webServer
+# Note: Playwright's webServer boots the backend; it reads secrets from
+# backend/.env (see .env.example).
 
 echo -e "${YELLOW}Starting Playwright E2E Tests for Podium${NC}"
 echo "=========================================="
@@ -48,7 +48,7 @@ if ! command -v npx >/dev/null 2>&1; then
     exit 1
 fi
 
-PLAYWRIGHT_CMD="doppler run --config dev -- npx playwright"
+PLAYWRIGHT_CMD="npx playwright"
 
 # Run each test file
 for test_file in "${TEST_FILES[@]}"; do
