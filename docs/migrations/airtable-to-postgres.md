@@ -8,16 +8,15 @@ The migration script is idempotent — uses `airtable_id` to skip already-migrat
 
 ```bash
 # Dev Airtable → local DB
-cd backend && doppler run --config dev -- uv run python scripts/migrate_from_airtable.py
+cd backend && uv run python scripts/migrate_from_airtable.py
 ```
 
 ## Production (Cutover)
 
 ### 1. Get prod connection string
 
-```bash
-doppler secrets get PODIUM_DATABASE_URL --config prd --plain
-```
+Read `PODIUM_DATABASE_URL` from the production env file on the VPS
+(`/opt/kiwihacks-podium/stack.env`).
 
 ### 2. Connect via Beekeeper Studio
 
@@ -26,7 +25,7 @@ Open Beekeeper Studio → New Connection → Paste the connection URL (strip `+a
 ### 3. Run Alembic migrations
 
 ```bash
-cd backend && doppler run --config prd -- uv run alembic upgrade head
+cd backend && uv run alembic upgrade head
 ```
 
 ### 4. (Optional) Truncate if starting fresh
@@ -41,7 +40,7 @@ RESTART IDENTITY CASCADE;
 ### 5. Run migration
 
 ```bash
-cd backend && doppler run --config prd -- uv run python scripts/migrate_from_airtable.py
+cd backend && uv run python scripts/migrate_from_airtable.py
 ```
 
 ### 6. Verify counts

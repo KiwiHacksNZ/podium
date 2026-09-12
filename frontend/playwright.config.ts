@@ -34,7 +34,7 @@ export default defineConfig({
 
 	webServer: isExternal ? undefined : [
 		{
-			// The caller supplies config directly or wraps Playwright with Doppler.
+			// The backend reads its config from backend/.env (see .env.example).
 			command: 'cd ../backend && uv run python -m podium --log-level warning',
 			port: 8000,
 			timeout: 120000,

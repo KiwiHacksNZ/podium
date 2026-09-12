@@ -14,13 +14,14 @@ pkill -f podium; pkill -f "vite|bun.*dev"
 Then from `frontend/`:
 
 ```bash
-doppler run --config dev -- npx playwright test                  # full suite
-doppler run --config dev -- npx playwright test tests/api-coverage.spec.ts
-doppler run --config dev -- npx playwright test --ui             # interactive mode
+npx playwright test                  # full suite
+npx playwright test tests/api-coverage.spec.ts
+npx playwright test --ui             # interactive mode
 ```
 
-Doppler injects `PODIUM_JWT_SECRET`, `PODIUM_DATABASE_URL`, and other backend
-env vars. Playwright boots both servers on demand (see `playwright.config.ts`).
+The backend reads `PODIUM_JWT_SECRET`, `PODIUM_DATABASE_URL`, and other vars from
+`backend/.env` (see `.env.example`) or the shell environment. Playwright boots
+both servers on demand (see `playwright.config.ts`).
 
 ## Files
 

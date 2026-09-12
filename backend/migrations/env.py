@@ -6,7 +6,7 @@ It connects to the database and applies/generates migrations.
 
 You rarely need to edit this file. The main things it does:
 1. Loads all SQLModel table definitions (so Alembic knows your schema)
-2. Connects to the database using PODIUM_DATABASE_URL from Doppler
+2. Connects to the database using PODIUM_DATABASE_URL from the environment
 3. Runs the migration(s)
 """
 
@@ -25,7 +25,7 @@ from podium.db import postgres  # noqa: F401
 config = context.config
 requested_sslmode: str | None = None
 
-# Get database URL from environment (Doppler sets PODIUM_DATABASE_URL)
+# Get database URL from environment (PODIUM_DATABASE_URL, e.g. from .env)
 database_url = os.environ.get("PODIUM_DATABASE_URL") or os.environ.get("DATABASE_URL")
 if database_url:
     # Alembic needs a sync driver. Convert asyncpg -> psycopg2

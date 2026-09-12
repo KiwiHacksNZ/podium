@@ -591,19 +591,6 @@ wheels = [
 ]
 
 [[package]]
-name = "doppler-env"
-version = "0.3.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pip" },
-    { name = "python-dotenv" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/8f/8b/38b4f570db3a1c68f84565078991fca249ffa878968e653e34e5442660a0/doppler_env-0.3.1.tar.gz", hash = "sha256:d187c2cf6a0dec677c00af502d59b382d507d69cd9805ea9e8211860bd0aa0f7", size = 4368, upload-time = "2022-12-08T23:51:49.164Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/76/6b/46293737fd8c854f34f099529e2606b366176cdcdee119e1474e47e367c2/doppler_env-0.3.1-py3-none-any.whl", hash = "sha256:4c80437f875c7bb85c980e7a3bf96fff594d1e1b05b99b49b02e673fbaa2d65c", size = 4375, upload-time = "2022-12-08T23:51:47.433Z" },
-]
-
-[[package]]
 name = "dynaconf"
 version = "3.2.13"
 source = { registry = "https://pypi.org/simple" }
@@ -2072,15 +2059,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pip"
-version = "26.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/48/83/0d7d4e9efe3344b8e2fe25d93be44f64b65364d3c8d7bc6dc90198d5422e/pip-26.0.1.tar.gz", hash = "sha256:c4037d8a277c89b320abe636d59f91e6d0922d08a05b60e85e53b296613346d8", size = 1812747, upload-time = "2026-02-05T02:20:18.702Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/de/f0/c81e05b613866b76d2d1066490adf1a3dbc4ee9d9c839961c3fc8a6997af/pip-26.0.1-py3-none-any.whl", hash = "sha256:bdb1b08f4274833d62c1aa29e20907365a2ceb950410df15fc9521bad440122b", size = 1787723, upload-time = "2026-02-05T02:20:16.416Z" },
-]
-
-[[package]]
 name = "platformdirs"
 version = "4.9.6"
 source = { registry = "https://pypi.org/simple" }
@@ -2107,7 +2085,6 @@ dependencies = [
     { name = "asyncpg" },
     { name = "beautifulsoup4" },
     { name = "datamodel-code-generator" },
-    { name = "doppler-env" },
     { name = "dynaconf" },
     { name = "fastapi", extra = ["standard"] },
     { name = "fastapi-cache2", extra = ["memcache"] },
@@ -2158,7 +2135,6 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.31.0" },
     { name = "beautifulsoup4", specifier = ">=4.13.4" },
     { name = "datamodel-code-generator", specifier = ">=0.32.0" },
-    { name = "doppler-env", specifier = ">=0.3.1" },
     { name = "dynaconf", specifier = ">=3.2.6,<4.0.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.128.0" },
     { name = "fastapi-cache2", extras = ["memcache"], specifier = ">=0.2.2,<0.3.0" },

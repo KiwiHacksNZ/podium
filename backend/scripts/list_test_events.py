@@ -3,7 +3,7 @@
 List events and owners to help debug leftover test events.
 
 Usage (from backend/):
-  doppler run --config dev -- uv run python scripts/list_test_events.py
+  uv run python scripts/list_test_events.py
 """
 
 import asyncio

@@ -56,7 +56,6 @@ services:
   # mathesar:
   #   build: ./mathesar
   #   environment:
-  #     - DOPPLER_TOKEN
   #     - POSTGRES_HOST=mathesar-db
   #     - POSTGRES_PORT=5432
   #     - POSTGRES_USER=mathesar
@@ -70,7 +69,6 @@ services:
   # mathesar-db:
   #   build: { context: ./mathesar, dockerfile: Dockerfile.postgres }
   #   environment:
-  #     - DOPPLER_TOKEN
   #     - POSTGRES_USER=mathesar
   #     - POSTGRES_DB=mathesar_django
   #   volumes: [mathesar_pgdata:/var/lib/postgresql/data]

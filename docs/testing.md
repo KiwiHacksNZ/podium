@@ -5,7 +5,7 @@ E2E tests using Playwright. Tests focus on user-facing UI flows; API calls are u
 ## Running Tests
 
 ```bash
-cd frontend && doppler run --config dev -- npx playwright test
+cd frontend && npx playwright test
 
 npx playwright test journey.spec.ts  # specific file
 npx playwright test --ui             # UI mode

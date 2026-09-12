@@ -2,7 +2,6 @@
 
 ## Prerequisites
 
-- [Doppler CLI](https://docs.doppler.com/docs/install-cli) (optional; only if you want Doppler-managed secrets)
 - Docker (for Postgres)
 - Node.js + Bun (frontend)
 - Python + uv (backend)

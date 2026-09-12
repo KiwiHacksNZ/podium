@@ -10,11 +10,11 @@ All official events are treated identically in the UI — users just pick which 
 
 ## Setting Up a New Series
 
-1. **Set `ACTIVE_EVENT_SERIES`** in Doppler (production) or `settings.toml` (local dev) to the new series slug (e.g., `apocalypse-2025`)
+1. **Set `PODIUM_ACTIVE_EVENT_SERIES`** in the environment (production) or `active_event_series` in `settings.toml` (local dev) to the new series slug (e.g., `apocalypse-2025`)
 
 2. **Create events** using the admin TUI:
    ```bash
-   cd backend && doppler run --config dev -- uv run python scripts/manage.py
+   cd backend && uv run python scripts/manage.py
    ```
    Set each event's `feature_flags_csv` to match the active series slug.
 
