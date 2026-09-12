@@ -6,12 +6,19 @@
     isSelected: boolean;
     toggle: () => void;
     selectable?: boolean;
+    rankLabel?: string | null;
   }
   let credits = $state("");
   let loadingCredits = $state(true);
   let loadingImage = $state(true);
 
-  let { project, isSelected, toggle, selectable = false }: Props = $props();
+  let {
+    project,
+    isSelected,
+    toggle,
+    selectable = false,
+    rankLabel = null,
+  }: Props = $props();
   onMount(() => {
     const allNames = [
       project.owner_display_name,
@@ -63,6 +70,11 @@
       />
       {#if loadingImage}
         <div class="skeleton h-48 w-full absolute top-0 left-0"></div>
+      {/if}
+      {#if rankLabel}
+        <div class="badge badge-info badge-lg absolute top-2 left-2 z-10">
+          {rankLabel}
+        </div>
       {/if}
     </figure>
     <div class="card-body">

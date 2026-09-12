@@ -11,14 +11,15 @@ from uuid import UUID, uuid4
 from pydantic import computed_field, field_validator
 from sqlmodel import Field, SQLModel, Relationship
 
-from podium.constants import EventPhase, RepoValidation, DemoValidation
-from podium.db.postgres.links import EventAttendeeLink
+from podium.constants import EventPhase, MAX_RANK, RepoValidation, DemoValidation
+from podium.db.postgres.links import EventAttendeeLink, EventJudgeLink
 
 if TYPE_CHECKING:
     from podium.db.postgres.user import User
     from podium.db.postgres.project import Project
     from podium.db.postgres.vote import Vote
     from podium.db.postgres.referral import Referral
+    from podium.db.postgres.judge_score import JudgeScore
 
 
 class Event(SQLModel, table=True):
@@ -32,8 +33,14 @@ class Event(SQLModel, table=True):
     slug: str = Field(max_length=50, unique=True, index=True)
     description: str = Field(default="")
 
-    # Lifecycle phase — controls what actions are allowed (see EventPhase enum)
+    # Lifecycle phase — controls visibility, submissions, and the leaderboard.
+    # The two judging/voting rounds are switched independently (see below).
     phase: str = Field(default=EventPhase.DRAFT, max_length=20)
+
+    # The two rounds, opened and closed independently of each other: judges can
+    # still be scoring while attendees vote, or either can run alone.
+    judging_open: bool = Field(default=False)
+    voting_open: bool = Field(default=False)
 
     # Submission settings
     demo_links_optional: bool = Field(default=False)
@@ -44,6 +51,10 @@ class Event(SQLModel, table=True):
     # Names an entry in validators/custom/REGISTRY; only relevant when
     # repo_validation or demo_validation is set to "custom".
     custom_validator: str | None = Field(default=None, max_length=50)
+
+    # 6-digit code an organizer hands out so judges can claim access to THIS
+    # event. NULL until generated. Secret — only ever exposed on EventPrivate.
+    judge_code: str | None = Field(default=None, max_length=6, unique=True, index=True)
 
     # Comma-separated feature flags (e.g. "flagship,sleepover")
     feature_flags_csv: str = Field(default="", max_length=500)
@@ -61,9 +72,13 @@ class Event(SQLModel, table=True):
     attendees: list["User"] = Relationship(
         back_populates="events_attending", link_model=EventAttendeeLink
     )
+    judges: list["User"] = Relationship(
+        back_populates="events_judging", link_model=EventJudgeLink
+    )
     projects: list["Project"] = Relationship(back_populates="event")
     votes: list["Vote"] = Relationship(back_populates="event")
     referrals: list["Referral"] = Relationship(back_populates="event")
+    judge_scores: list["JudgeScore"] = Relationship(back_populates="event")
 
     @field_validator("phase")
     @classmethod
@@ -98,14 +113,24 @@ class Event(SQLModel, table=True):
 
     @computed_field
     @property
+    def finalist_count(self) -> int:
+        """How many projects have been locked in as finalists (0 before judging ends)."""
+        return sum(1 for p in (self.projects or []) if p.is_finalist)
+
+    @computed_field
+    @property
     def max_votes_per_user(self) -> int:
-        """Votes allowed per user, scaled to project count."""
+        """Ballot size. Once finalists are locked in, attendees rank up to MAX_RANK of
+        them; before that it scales with project count."""
+        finalists = self.finalist_count
+        if finalists:
+            return min(MAX_RANK, finalists)
         count = len(self.projects) if self.projects else 0
         if count < 4:
             return 1
         if count < 20:
             return 2
-        return 3
+        return MAX_RANK
 
     @computed_field
     @property
@@ -128,7 +153,10 @@ class EventPublic(SQLModel):
     phase: str
     demo_links_optional: bool
     require_ysws_pii: bool
+    judging_open: bool
+    voting_open: bool
     max_votes_per_user: int
+    finalist_count: int
     # Expose validation config so the frontend can drive instant warnings
     repo_validation: str
     demo_validation: str
@@ -139,6 +167,7 @@ class EventPrivate(EventPublic):
 
     owner_id: UUID
     custom_validator: str | None
+    judge_code: str | None = None
     feature_flags_csv: str
     deleted_at: datetime | None = None
 
@@ -149,6 +178,8 @@ class EventUpdate(SQLModel):
     name: str | None = None
     description: str | None = None
     phase: str | None = None
+    judging_open: bool | None = None
+    voting_open: bool | None = None
     demo_links_optional: bool | None = None
     require_ysws_pii: bool | None = None
     repo_validation: str | None = None

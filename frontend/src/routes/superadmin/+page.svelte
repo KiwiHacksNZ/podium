@@ -15,11 +15,11 @@
     admin_permissions_csv: string;
   };
 
-  const phases = ["draft", "submission", "voting", "closed"];
+  const phases = ["draft", "submission", "judging", "voting", "closed"];
   const repoValidations = ["none", "github", "git", "custom"];
   const demoValidations = ["none", "itch", "custom"];
   const phaseBadge: Record<string, string> = {
-    draft: "badge-ghost", submission: "badge-success", voting: "badge-warning", closed: "badge-info",
+    draft: "badge-ghost", submission: "badge-success", judging: "badge-accent", voting: "badge-warning", closed: "badge-info",
   };
 
   type Page<T> = { items: T[]; total: number; page: number; size: number; pages: number };
@@ -291,7 +291,7 @@
                 </tr>
                 {#if editing?.id === event.id}
                   <tr>
-                    <td colspan="8">
+                    <td colspan="7">
                       <div class="card bg-base-200 my-2">
                         <div class="card-body gap-3 py-4">
                           <h3 class="font-semibold">Edit: {editing.name}</h3>

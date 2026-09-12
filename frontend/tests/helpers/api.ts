@@ -244,3 +244,103 @@ export async function adminGetReferrals(api: APIRequestContext, eventId: string)
 
 /** Backwards-compat alias used by older specs. */
 export const getLeaderboard = adminGetLeaderboard;
+
+// =============================================================================
+// JUDGING
+// =============================================================================
+
+export async function judgeGetProjects(api: APIRequestContext, eventId: string) {
+	const response = await api.get(`${API_URL}/judging/${eventId}/projects`);
+	return response;
+}
+
+export async function judgeScoreProject(
+	api: APIRequestContext,
+	eventId: string,
+	projectId: string,
+	scores: {
+		originality: number;
+		technicality: number;
+		theme: number;
+		usability: number;
+	}
+) {
+	const response = await api.put(`${API_URL}/judging/${eventId}/scores/${projectId}`, {
+		data: scores
+	});
+	return response;
+}
+
+export async function getJudgingResults(api: APIRequestContext, eventId: string) {
+	const response = await api.get(`${API_URL}/judging/${eventId}/results`);
+	return response;
+}
+
+export async function adminLockFinalists(api: APIRequestContext, eventId: string) {
+	const response = await api.post(`${API_URL}/events/admin/${eventId}/finalists`);
+	return response;
+}
+
+/** Move an event to a new phase. Fails fast — used for setup, not assertions. */
+export async function setEventPhase(
+	api: APIRequestContext,
+	eventId: string,
+	phase: 'draft' | 'submission' | 'judging' | 'voting' | 'closed'
+) {
+	const response = await adminPatchEvent(api, eventId, { phase });
+	await assertOk(response, `setEventPhase(${phase})`);
+	return response.json();
+}
+
+/** Open or close a round. Judging and voting are independent of the phase. */
+export async function setRoundOpen(
+	api: APIRequestContext,
+	eventId: string,
+	round: 'judging_open' | 'voting_open',
+	open: boolean
+) {
+	const response = await adminPatchEvent(api, eventId, { [round]: open });
+	await assertOk(response, `setRoundOpen(${round}=${open})`);
+	return response.json();
+}
+
+// =============================================================================
+// SUPERADMIN
+// =============================================================================
+
+/** List the judges for an event. Event owner required. */
+export async function adminGetJudges(api: APIRequestContext, eventId: string) {
+	return api.get(`${API_URL}/events/admin/${eventId}/judges`);
+}
+
+/** Add an existing user as a judge for one event, by email. Owner required. */
+export async function adminAddJudge(api: APIRequestContext, eventId: string, email: string) {
+	return api.post(`${API_URL}/events/admin/${eventId}/add-judge`, { data: { email } });
+}
+
+/** Remove a judge from one event. Owner required. */
+export async function adminRemoveJudge(api: APIRequestContext, eventId: string, userId: string) {
+	return api.post(`${API_URL}/events/admin/${eventId}/remove-judge`, {
+		data: { user_id: userId }
+	});
+}
+
+/** Generate (or rotate) the event's 6-digit judge code. Event owner required. */
+export async function adminRotateJudgeCode(api: APIRequestContext, eventId: string) {
+	return api.post(`${API_URL}/events/admin/${eventId}/judge-code`);
+}
+
+/** Claim judge access with a 6-digit judge code. */
+export async function redeemJudgeCode(api: APIRequestContext, code: string) {
+	return api.post(`${API_URL}/judging/redeem`, { data: { code } });
+}
+
+/** Grant/revoke is_admin / is_superadmin. Superadmin actor required. */
+export async function setUserAccess(
+	api: APIRequestContext,
+	userId: string,
+	data: { is_admin?: boolean; is_superadmin?: boolean }
+) {
+	const response = await api.patch(`${API_URL}/superadmin/users/${userId}/access`, { data });
+	return response;
+}

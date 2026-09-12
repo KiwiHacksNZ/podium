@@ -26,7 +26,7 @@ from podium.db.postgres import (
     scalar_one_or_none,
     scalar_all,
 )
-from podium.constants import BAD_AUTH, BAD_ACCESS, Slug, EventPhase
+from podium.constants import BAD_AUTH, BAD_ACCESS, MAX_RANK, Slug, EventPhase
 from podium.cache import cache_get, cache_set, cache_delete
 from podium.db.postgres.queries import get_active_event, list_active_events
 
@@ -38,6 +38,8 @@ class UserEvents(BaseModel):
 
 
 class CreateVotes(BaseModel):
+    """Ranked ballot: list order is the ranking — projects[0] is the first choice."""
+
     projects: list[UUID]
     event: UUID
 
@@ -146,7 +148,8 @@ async def vote(
     user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """Vote for projects in an event."""
+    """Cast a ranked ballot. Position in `projects` is the rank: first entry is the
+    voter's first choice (worth the most points), and so on."""
     stmt = (
         select(Event)
         .where(Event.id == votes.event)
@@ -159,11 +162,24 @@ async def vote(
     if user not in event.attendees:
         raise BAD_ACCESS
 
-    if event.phase != EventPhase.VOTING:
+    if not event.voting_open:
         raise HTTPException(status_code=403, detail="Voting is not open for this event")
 
     # Dedupe project IDs to prevent voting for same project twice in one request
     unique_project_ids = list(dict.fromkeys(votes.projects))
+
+    if len(unique_project_ids) > MAX_RANK:
+        raise HTTPException(
+            status_code=400,
+            detail=f"A ballot can rank at most {MAX_RANK} projects",
+        )
+
+    # Once judging has produced finalists, only they are on the ballot.
+    finalist_ids = {p.id for p in event.projects if p.is_finalist}
+    if finalist_ids and not finalist_ids.issuperset(unique_project_ids):
+        raise HTTPException(
+            status_code=400, detail="Only finalist projects can be ranked"
+        )
 
     existing_votes = await scalar_all(
         session,
@@ -178,6 +194,7 @@ async def vote(
             detail=f"Cannot vote for {len(unique_project_ids)} projects. You have {remaining} vote(s) remaining.",
         )
 
+    next_rank = len(existing_votes) + 1
     for project_id in unique_project_ids:
         stmt = (
             select(Project)
@@ -212,10 +229,12 @@ async def vote(
             voter_id=user.id,
             project_id=project_id,
             event_id=event.id,
+            rank=next_rank,
             ip_address=request_ip(request),
             user_agent=request.headers.get("user-agent", "")[:500],
         )
         session.add(vote)
+        next_rank += 1
         session.add(
             VoteAuditLog(
                 voter_id=user.id,
@@ -241,7 +260,8 @@ async def get_event_projects(
     leaderboard: Annotated[bool, Query(description="Sort by points if true")],
     session: Annotated[AsyncSession, Depends(get_ro_session)],
 ) -> list[ProjectPublic]:
-    """Get projects for an event. Leaderboard results are cached for 30s."""
+    """Get projects for an event. During voting, only finalists are returned once an
+    organizer has locked them in. Leaderboard results are cached for 30s."""
     event = await session.get(Event, event_id)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -269,6 +289,9 @@ async def get_event_projects(
             selectinload(Project.collaborators),
         ),
     )
+
+    if event.voting_open and any(p.is_finalist for p in projects):
+        projects = [p for p in projects if p.is_finalist]
 
     if leaderboard:
         projects.sort(key=lambda p: p.points, reverse=True)
@@ -328,6 +351,7 @@ async def create_test_event(
         description=event_data.description,
         owner_id=user.id,
         phase=EventPhase.VOTING,  # test events start in voting phase for e2e tests
+        voting_open=True,
         demo_links_optional=True,
         feature_flags_csv=active_series,
         # Disable validation for test events — avoids external API calls (GitHub, itch)

@@ -40,21 +40,38 @@
   }
 
   const isAuthenticated = $derived(!!getAuthenticatedUser().access_token);
+  const isJudge = $derived(
+    !!getAuthenticatedUser().user.judge_event_ids?.includes(data.event.id),
+  );
+  const finalistCount = $derived(data.event.finalist_count ?? 0);
 </script>
 
 <div class="flex justify-center flex-col mx-auto max-w-md space-y-4 mt-4">
+  {#if data.event.judging_open && isJudge}
+    <div class="tooltip" data-tip="Score every project on all four criteria">
+      <a
+        href={`/events/${data.event.slug}/judge`}
+        class="btn-accent btn btn-block">Judge Projects</a
+      >
+    </div>
+  {/if}
   {#if data.event.partOfEvent}
     <div
       class="tooltip"
-      data-tip={data.event.phase === "voting"
-        ? "Vote for your favorite projects"
+      data-tip={data.event.voting_open
+        ? finalistCount > 0
+          ? "Rank the finalists chosen by the judges"
+          : "Vote for your favorite projects"
         : "You can't vote yet! If you think you should be able to, contact your event organizer."}
     >
       <a
         href={`/events/${data.event.slug}/rank`}
-        class="btn-primary btn btn-block {data.event.phase === 'voting'
+        class="btn-primary btn btn-block {data.event.voting_open
           ? ''
-          : 'btn-disabled'}">Rank Projects</a
+          : 'btn-disabled'}"
+        >{data.event.voting_open && finalistCount > 0
+          ? "Rank Finalists"
+          : "Rank Projects"}</a
       >
     </div>
   {/if}

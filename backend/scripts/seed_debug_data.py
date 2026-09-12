@@ -73,12 +73,14 @@ from podium.db.postgres.base import async_session_factory, scalar_one_or_none
 from podium.db.postgres.user import User
 from podium.db.postgres.event import Event
 from podium.db.postgres.project import Project
-from podium.db.postgres.links import EventAttendeeLink
+from podium.db.postgres.links import EventAttendeeLink, EventJudgeLink
 
 from podium.config import settings as podium_settings
 
 
-async def get_or_create_user(session, email: str, first_name: str, last_name: str) -> User:
+async def get_or_create_user(
+    session, email: str, first_name: str, last_name: str
+) -> User:
     """Get existing user or create new one."""
     stmt = select(User).where(User.email == email)
     user = await scalar_one_or_none(session, stmt)
@@ -150,6 +152,22 @@ async def add_attendee(session, event: Event, user: User) -> None:
     print(f"✓ Added {user.email} as attendee to event")
 
 
+async def add_judge(session, event: Event, user: User) -> None:
+    """Add user as a judge for the event."""
+    stmt = select(EventJudgeLink).where(
+        EventJudgeLink.event_id == event.id,
+        EventJudgeLink.user_id == user.id
+    )
+    result = await session.exec(stmt)
+    if result.first():
+        print(f"✓ User {user.email} is already judging the event")
+        return
+
+    session.add(EventJudgeLink(event_id=event.id, user_id=user.id))
+    await session.commit()
+    print(f"✓ Added {user.email} as judge for event")
+
+
 async def create_project(session, owner: User, event: Event) -> Project:
     """Create a project for the user."""
     # Check if project already exists
@@ -216,6 +234,15 @@ async def main():
         # Add second user as attendee
         await add_attendee(session, event, attendee)
         
+        # Judge account for testing the judging round
+        judge = await get_or_create_user(
+            session,
+            email="judge+debug@kiwihacks.org",
+            first_name="Judge",
+            last_name="Debug",
+        )
+        await add_judge(session, event, judge)
+        
         # Create project for second user
         project = await create_project(session, attendee, event)
     
@@ -224,6 +251,7 @@ async def main():
     print(f"  Event: {event.name} (slug: {event.slug})")
     print(f"  Owner: {owner.email}")
     print(f"  Attendee: {attendee.email}")
+    print(f"  Judge: {judge.email}")
     print(f"  Project: {project.name}")
     print(f"\nProject join code: {project.join_code}")
     print()

@@ -27,6 +27,7 @@ Tests create users on-the-fly via `/users/` endpoint, then get a JWT via `/verif
 | `journey.spec.ts` | Full end-to-end hackathon lifecycle (organizer + attendee) |
 | `wizard.spec.ts` | Project submission wizard steps |
 | `admin.spec.ts` | Admin panel: phase change, attendee removal, leaderboard badges |
+| `judging.spec.ts` | Judge scoring, finalist lock-in, ranked ballot, weighted leaderboard |
 | `permissions.spec.ts` | Owner vs non-owner vs unauthenticated access |
 | `api-coverage.spec.ts` | API contract tests (one test per endpoint) |
 

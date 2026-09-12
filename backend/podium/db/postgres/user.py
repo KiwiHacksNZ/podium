@@ -12,13 +12,14 @@ from uuid import UUID, uuid4
 from sqlmodel import Field, SQLModel, Relationship
 
 from podium.constants import DEFAULT_ADMIN_PERMISSIONS, PlatformAdminPermission
-from podium.db.postgres.links import EventAttendeeLink, ProjectCollaboratorLink
+from podium.db.postgres.links import EventAttendeeLink, EventJudgeLink, ProjectCollaboratorLink
 
 if TYPE_CHECKING:
     from podium.db.postgres.event import Event
     from podium.db.postgres.project import Project
     from podium.db.postgres.vote import Vote
     from podium.db.postgres.referral import Referral
+    from podium.db.postgres.judge_score import JudgeScore
 
 
 class User(SQLModel, table=True):
@@ -55,11 +56,15 @@ class User(SQLModel, table=True):
     owned_events: list["Event"] = Relationship(back_populates="owner")
     owned_projects: list["Project"] = Relationship(back_populates="owner")
     votes: list["Vote"] = Relationship(back_populates="voter")
+    judge_scores: list["JudgeScore"] = Relationship(back_populates="judge")
     referrals: list["Referral"] = Relationship(back_populates="user")
 
     # Many-to-many: events attending and projects collaborating on
     events_attending: list["Event"] = Relationship(
         back_populates="attendees", link_model=EventAttendeeLink
+    )
+    events_judging: list["Event"] = Relationship(
+        back_populates="judges", link_model=EventJudgeLink
     )
     projects_collaborating: list["Project"] = Relationship(
         back_populates="collaborators", link_model=ProjectCollaboratorLink
@@ -104,6 +109,8 @@ class UserPrivate(UserPublic):
     has_ysws_pii: bool = False
     is_superadmin: bool = False
     is_admin: bool = False
+    # Events this user judges — judging access is per event, never global.
+    judge_event_ids: list[UUID] = []
     admin_permissions: list[str] = []
 
 
@@ -142,10 +149,12 @@ def get_effective_admin_permissions(user: "User") -> set[str]:
 
 def user_to_private(user: "User") -> "UserPrivate":
     """Build UserPrivate from a User model, extracting vote IDs from the loaded relationship.
-    Requires User.votes to be loaded (via selectinload or similar).
-    Raises ValueError if the relationship was not loaded (votes is None)."""
+    Requires User.votes and User.events_judging to be loaded (via selectinload).
+    Raises ValueError if a relationship was not loaded."""
     if user.votes is None:
         raise ValueError("user_to_private: User.votes must be eagerly loaded (add selectinload(User.votes))")
+    if user.events_judging is None:
+        raise ValueError("user_to_private: User.events_judging must be eagerly loaded (add selectinload(User.events_judging))")
     return UserPrivate(
         id=user.id,
         display_name=user.display_name,
@@ -157,6 +166,7 @@ def user_to_private(user: "User") -> "UserPrivate":
         has_ysws_pii=has_ysws_pii(user),
         is_superadmin=user.is_superadmin,
         is_admin=user.is_admin,
+        judge_event_ids=[e.id for e in user.events_judging],
         admin_permissions=sorted(get_effective_admin_permissions(user)),
     )
 

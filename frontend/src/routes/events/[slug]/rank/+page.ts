@@ -58,7 +58,9 @@ export const load: PageLoad = async ({ params, fetch, parent }) => {
     console.debug(
       `User has ${userVotesInEvent} votes in event ${event.id}, can select ${toSelect} more projects`,
     );
-    return { projects: votableProjects, toSelect, alreadyVoted };
+    const finalistCount = event.finalist_count ?? 0;
+
+    return { projects: votableProjects, toSelect, alreadyVoted, finalistCount };
   } catch (err) {
     console.error(err);
     throw error(500, "Failed to load projects");
