@@ -15,7 +15,7 @@ Query patterns:
     projects = await scalar_all(session, select(Project).where(Project.event_id == eid))
 """
 
-from podium.db.postgres.base import get_session, get_ro_session, engine, init_db, scalar_one_or_none, scalar_all
+from podium.db.postgres.base import async_session_factory, get_session, get_ro_session, engine, init_db, scalar_one_or_none, scalar_all
 from podium.db.postgres.links import EventAttendeeLink, EventJudgeLink, ProjectCollaboratorLink
 from podium.db.postgres.user import User, UserPublic, UserPrivate, UserInternal, UserSignup, UserUpdate, user_to_private, default_display_name
 from podium.db.postgres.event import Event, EventPublic, EventPrivate, EventUpdate
@@ -38,6 +38,7 @@ from podium.db.postgres.magic_link import MagicLink
 
 __all__ = [
     # Database utilities
+    "async_session_factory",
     "get_session",
     "get_ro_session",
     "engine",
