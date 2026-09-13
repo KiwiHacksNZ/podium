@@ -4,8 +4,8 @@
 Seed script for creating debug/test data.
 
 Creates:
-- A flagship event with owner+debug@kiwihacks.org as owner
-- A second user attendee+debug@kiwihacks.org attending the event
+- A flagship event with owner+debug@kiwihacks.com as owner
+- A second user attendee+debug@kiwihacks.com attending the event
 - A valid project submitted by the second user
 
 Usage:
@@ -185,7 +185,7 @@ async def create_project(session, owner: User, event: Event) -> Project:
     project = Project(
         name="Pixel Dash",
         repo="https://github.com/yourname/gamename",
-        image_url="https://vote.kiwihacks.org/podium.png",
+        image_url="https://vote.kiwihacks.com/podium.png",
         demo="https://vempr.itch.io/pixeldash",
         description="A fast-paced pixel art platformer game where you dash through challenging levels. Built during the flagship hackathon!",
         join_code=token_urlsafe(8),
@@ -215,7 +215,7 @@ async def main():
         # Create or get owner user
         owner = await get_or_create_user(
             session,
-            email="owner+debug@kiwihacks.org",
+            email="owner+debug@kiwihacks.com",
             first_name="Owner",
             last_name="Debug"
         )
@@ -226,7 +226,7 @@ async def main():
         # Create or get second user
         attendee = await get_or_create_user(
             session,
-            email="attendee+debug@kiwihacks.org",
+            email="attendee+debug@kiwihacks.com",
             first_name="Attendee",
             last_name="Debug2"
         )
@@ -237,7 +237,7 @@ async def main():
         # Judge account for testing the judging round
         judge = await get_or_create_user(
             session,
-            email="judge+debug@kiwihacks.org",
+            email="judge+debug@kiwihacks.com",
             first_name="Judge",
             last_name="Debug",
         )

@@ -18,7 +18,7 @@ from podium.db.postgres import (
     user_to_private,
     default_display_name,
 )
-from podium.routers.auth import get_current_user
+from podium.routers.auth import get_current_user, send_magic_link
 from podium.validators.email import is_disposable_email
 from podium.validators.turnstile import require_turnstile
 
@@ -87,6 +87,8 @@ async def create_user(
     user: UserSignup,
     session: Annotated[AsyncSession, Depends(get_session)],
     _turnstile: None = Depends(require_turnstile),
+    send_login_link: Annotated[bool, Query()] = False,
+    redirect: Annotated[str, Query()] = "",
 ):
     email = user.email.strip().lower()
     if is_disposable_email(email):
@@ -106,4 +108,6 @@ async def create_user(
     session.add(new_user)
     await session.commit()
     await session.refresh(new_user)
+    if send_login_link:
+        await send_magic_link(email, redirect=redirect, session=session)
     return {"id": str(new_user.id)}

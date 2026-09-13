@@ -10,15 +10,17 @@ Unauthenticated endpoints require a Turnstile CAPTCHA token instead of IP-based 
 
 **Endpoints protected by Turnstile:**
 - `POST /users/` (signup)
+- `POST /request-login`
 - `GET /users/exists`
 
-`POST /request-login` is intentionally unprotected: the signup flow reuses the same single-use token for both `POST /users/` and the immediate `POST /request-login` call, so validating twice would fail the second. The email rate limiter provides bot protection instead.
+Turnstile tokens are single-use. Login validates its token and checks account existence in one `POST /request-login`. Signup asks `POST /users/` to create the user and send the first magic link in one request. The UI resets the widget after each attempt. Server-side validation also checks the widget's `authenticate` action and frontend hostname.
 
 **Config:**
 - **Backend:** `PODIUM_TURNSTILE_SECRET_KEY` in the environment. If empty, server-side verification is skipped — no code change needed.
-- **Frontend:** `PUBLIC_TURNSTILE_SITE_KEY` needs to be set for the widget to render and work
+- **Backend hostnames:** `PODIUM_TURNSTILE_HOSTNAMES` is a comma-separated allowlist. Production should use `vote.kiwihacks.com`; local testing should use `localhost,127.0.0.1`.
+- **Frontend:** The production site key is built in. `PUBLIC_TURNSTILE_SITE_KEY` can override it, or use `disabled` to turn the widget off locally.
 
-> ⚠️ **Production**: Both keys must be set. Without `PODIUM_TURNSTILE_SECRET_KEY` the backend accepts any request. Without `PUBLIC_TURNSTILE_SITE_KEY` the widget never renders.
+> ⚠️ **Production**: The backend secret and hostname allowlist must both be set. Production startup fails closed when either is missing.
 
 **Implementation:** `backend/podium/validators/turnstile.py` — `require_turnstile` FastAPI dependency.
 

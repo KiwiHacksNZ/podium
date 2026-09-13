@@ -17,14 +17,17 @@
 
   // Turnstile token — refreshed each time the user solves the challenge
   let turnstileToken = $state("");
-  // Set to true if the Turnstile widget fails to load (bad key, network error, etc.)
-  // In that case we fall through and let the backend decide — don't permanently block the user.
-  let turnstileFailed = $state(false);
+  let resetTurnstile: (() => void) | undefined = $state();
 
   let isVerifying = $state(false);
   let showSignupFields = $state(false);
   let showEmailLogin = $state(false);
   let expandedDueTo = "";
+  const configuredTurnstileSiteKey = env.PUBLIC_TURNSTILE_SITE_KEY;
+  const turnstileSiteKey =
+    configuredTurnstileSiteKey === "disabled"
+      ? ""
+      : configuredTurnstileSiteKey || "0x4AAAAAAEx_FfidvS2NGCvu";
   const hackClubSsoEnabled = $derived(
     Boolean(env.PUBLIC_SSO_CLIENT_ID || env.PUBLIC_HACKCLUB_CLIENT_ID),
   );
@@ -58,22 +61,9 @@
     return turnstileToken ? { "X-Turnstile-Token": turnstileToken } : {};
   }
 
-  // Returns true (exists), false (doesn't exist), or null (request error — already toasted).
-  async function checkUserExists(): Promise<boolean | null> {
-    const { data, error: err } = await UsersService.userExistsUsersExistsGet({
-      query: { email: userInfo.email },
-      headers: turnstileHeaders(),
-      throwOnError: false,
-    });
-    if (err || !data) {
-      handleError(err);
-      return null;
-    }
-    if (data.exists) {
-      showSignupFields = false;
-      return true;
-    }
-    return false;
+  function refreshTurnstile() {
+    turnstileToken = "";
+    resetTurnstile?.();
   }
 
   // Function to handle login
@@ -84,20 +74,17 @@
       return;
     }
     // Even though error handling is done in the API, the try-finally block is used to ensure the loading state is reset
-    const userExists = await checkUserExists();
-    if (userExists === null) return;
-    if (userExists) {
-      // Request magic link for the provided email if the user exists
-      const { error: err } = await AuthService.requestLoginRequestLoginPost({
-        body: { email: userInfo.email },
-        query: { redirect: redirectUrl ?? "" },
-        headers: turnstileHeaders(),
-        throwOnError: false,
-      });
-      if (err) {
-        handleError(err);
-        return;
-      }
+    const { data, error: err } = await AuthService.requestLoginRequestLoginPost({
+      body: { email: userInfo.email },
+      query: { redirect: redirectUrl ?? "" },
+      headers: turnstileHeaders(),
+      throwOnError: false,
+    }).finally(refreshTurnstile);
+    if (err || !data) {
+      handleError(err);
+      return;
+    }
+    if (data.account_exists) {
       toast.success(`Magic link sent to ${userInfo.email}. Check your spam folder if you don't see it!`);
       // Clear field
       userInfo.email = "";
@@ -118,23 +105,12 @@
     const signupEmail = userInfo.email;
     const { error: signupErr } = await UsersService.createUserUsersPost({
       body: userInfo,
+      query: { send_login_link: true, redirect: redirectUrl ?? "" },
       headers: turnstileHeaders(),
       throwOnError: false,
-    });
+    }).finally(refreshTurnstile);
     if (signupErr) {
       handleError(signupErr);
-      return;
-    }
-
-    // Request magic link immediately after signup without re-checking existence
-    const { error: loginErr } = await AuthService.requestLoginRequestLoginPost({
-      body: { email: signupEmail },
-      query: { redirect: redirectUrl ?? "" },
-      headers: turnstileHeaders(),
-      throwOnError: false,
-    });
-    if (loginErr) {
-      handleError(loginErr);
       return;
     }
 
@@ -248,16 +224,13 @@
         class="input input-bordered w-full"
         bind:value={userInfo.email}
         placeholder="example@example.com"
-        onblur={async () => {
+        onblur={() => {
           if (
             expandedDueTo != userInfo.email &&
             userInfo.email &&
             showSignupFields
           ) {
-            const userExists = await checkUserExists();
-            if (userExists) {
-              showSignupFields = false;
-            }
+            showSignupFields = false;
           }
         }}
       />
@@ -376,17 +349,20 @@
         />
       {/if}
 
-      {#if env.PUBLIC_TURNSTILE_SITE_KEY}
+      {#if turnstileSiteKey}
         <div class="flex justify-center mt-4">
           <Turnstile
-            siteKey={env.PUBLIC_TURNSTILE_SITE_KEY}
+            siteKey={turnstileSiteKey}
+            action="authenticate"
             theme="auto"
-            on:callback={(e) => (turnstileToken = e.detail.token)}
+            bind:reset={resetTurnstile}
+            on:callback={(e) => {
+              turnstileToken = e.detail.token;
+            }}
             on:expired={() => (turnstileToken = "")}
             on:timeout={() => (turnstileToken = "")}
             on:error={() => {
               turnstileToken = "";
-              turnstileFailed = true;
               toast.error("Security check failed to load. Please refresh the page.");
             }}
           />
@@ -396,7 +372,7 @@
       <div class="flex justify-center">
         <button
           class="btn btn-primary mt-4"
-          disabled={!!env.PUBLIC_TURNSTILE_SITE_KEY && !turnstileToken && !turnstileFailed}
+          disabled={!!turnstileSiteKey && !turnstileToken}
           use:asyncClick={eitherLoginOrSignUp}
         >
           Login / Sign Up

@@ -38,7 +38,7 @@ Caching is silently disabled unless `PODIUM_REDIS_URL` is set. If backend runs i
 
 ## Turnstile (CAPTCHA)
 
-Leave `PUBLIC_TURNSTILE_SITE_KEY` unset locally — the widget won't render and the login form works normally.
+The production site key is the frontend default. Set `PUBLIC_TURNSTILE_SITE_KEY=disabled` to hide the widget locally while backend verification is disabled.
 
 To test with Turnstile active, use [Cloudflare's test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/) (no account needed, work on localhost):
 
@@ -49,6 +49,8 @@ To test with Turnstile active, use [Cloudflare's test keys](https://developers.c
 | `3x00000000000000000000FF` | Forces interaction |
 
 Test keys generate dummy tokens (`XXXX.DUMMY.TOKEN.XXXX`) that your real production secret will reject. Set `PODIUM_TURNSTILE_SECRET_KEY` to a matching test secret:
+
+Also set `PODIUM_TURNSTILE_HOSTNAMES=localhost,127.0.0.1`.
 
 | `PODIUM_TURNSTILE_SECRET_KEY` | Behavior |
 |---|---|

@@ -6,7 +6,7 @@ airtable_users_table_id = ""
 airtable_projects_table_id = ""
 airtable_referrals_table_id = ""
 airtable_votes_table_id = ""
-production_url = "https://vote.kiwihacks.org"
+production_url = "https://vote.kiwihacks.com"
 loops_transactional_id = ""
 enable_test_endpoints = false  # SECURITY: Must be explicitly set to true for /test-token endpoint
 active_event_series = "flagship"
@@ -24,5 +24,5 @@ active_event_series = "test-series"  # Active series for testing
 
 [production]
 enable_test_endpoints = false
-production_url = "https://vote.kiwihacks.org"
+production_url = "https://vote.kiwihacks.com"
 active_event_series = "flagship"

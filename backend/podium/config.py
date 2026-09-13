@@ -87,6 +87,10 @@ settings.validators.register(
             "turnstile_secret_key",
             default="",
         ),
+        Validator(
+            "turnstile_hostnames",
+            default="",
+        ),
         # Redis — empty string disables caching (app works normally without it)
         Validator(
             "redis_url",
@@ -169,6 +173,8 @@ def validate_runtime_security() -> None:
         problems.append("test endpoints must be disabled")
     if not settings.get("turnstile_secret_key", ""):
         problems.append("PODIUM_TURNSTILE_SECRET_KEY is required")
+    if not comma_separated_setting("turnstile_hostnames"):
+        problems.append("PODIUM_TURNSTILE_HOSTNAMES is required")
 
     cors_origins = comma_separated_setting("cors_origins")
     if not cors_origins or "*" in cors_origins:

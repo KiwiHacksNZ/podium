@@ -59,7 +59,7 @@ export default defineConfig({
 			env: {
 				PUBLIC_API_URL: 'http://127.0.0.1:8000',
 				// Disable Turnstile widget in test environment so the login button stays enabled
-				PUBLIC_TURNSTILE_SITE_KEY: ''
+				PUBLIC_TURNSTILE_SITE_KEY: 'disabled'
 			}
 		}
 	],

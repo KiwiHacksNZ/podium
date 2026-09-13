@@ -10,10 +10,21 @@ export type Body_remove_attendee_events_admin__event_id__remove_attendee_post = 
     user_id: string;
 };
 
+export type Body_remove_judge_events_admin__event_id__remove_judge_post = {
+    user_id: string;
+};
+
 export type Body_transfer_project_owner_projects__project_id__transfer_owner_post = {
     new_owner_id: string;
 };
 
+export type Body_upload_project_image_projects_image_upload_post = {
+    file: string;
+};
+
+/**
+ * Ranked ballot: list order is the ranking — projects[0] is the first choice.
+ */
 export type CreateVotes = {
     projects: Array<(string)>;
     event: string;
@@ -90,8 +101,91 @@ export type EventUpdate = {
     feature_flags_csv?: (string | null);
 };
 
+export type FinalistResponse = {
+    project_id: string;
+    name: string;
+    judge_score: number;
+    judge_count: number;
+};
+
 export type HTTPValidationError = {
     detail?: Array<ValidationError>;
+};
+
+export type JudgeCodeRedeemed = {
+    access_token: string;
+    token_type: string;
+    event_id: string;
+    event_name: string;
+    event_slug: string;
+};
+
+export type JudgeCodeResponse = {
+    judge_code: string;
+};
+
+export type JudgeEmail = {
+    email: string;
+};
+
+/**
+ * A project as the judge sees it, with their own score if already given.
+ */
+export type JudgeProject = {
+    id: string;
+    name: string;
+    repo: string;
+    demo: string;
+    description: string;
+    image_url: string;
+    owner_display_name: string;
+    my_score?: (JudgeScorePublic | null);
+};
+
+export type JudgeProjects = {
+    projects: Array<JudgeProject>;
+};
+
+/**
+ * Aggregate judge standing for one project.
+ */
+export type JudgeResult = {
+    project_id: string;
+    name: string;
+    judge_score: number;
+    judge_count: number;
+    is_finalist: boolean;
+    averages: {
+        [key: string]: (number);
+    };
+};
+
+/**
+ * A judge's own score, echoed back to them.
+ */
+export type JudgeScorePublic = {
+    originality: number;
+    technicality: number;
+    theme: number;
+    usability: number;
+    project_id: string;
+    total: number;
+    updated_at: string;
+};
+
+/**
+ * Request body for scoring a project (full replace of this judge's score).
+ */
+export type JudgeScoreUpsert = {
+    originality: number;
+    technicality: number;
+    theme: number;
+    usability: number;
+};
+
+export type LoginRequested = {
+    message: string;
+    account_exists: boolean;
 };
 
 export type Page_EventPrivate_ = {
@@ -173,6 +267,11 @@ export type ProjectUpdate = {
     demo?: (string | null);
     description?: (string | null);
     hours_spent?: (number | null);
+};
+
+export type RedeemJudgeCode = {
+    code: string;
+    name: string;
 };
 
 export type ReferralResponse = {
@@ -448,7 +547,7 @@ export type RequestLoginRequestLoginPostData = {
     };
 };
 
-export type RequestLoginRequestLoginPostResponse = (unknown);
+export type RequestLoginRequestLoginPostResponse = (LoginRequested);
 
 export type RequestLoginRequestLoginPostError = (HTTPValidationError);
 
@@ -461,6 +560,10 @@ export type VerifyTokenVerifyGetData = {
 export type VerifyTokenVerifyGetResponse = (AuthenticatedUser);
 
 export type VerifyTokenVerifyGetError = (HTTPValidationError);
+
+export type LogoutAuthLogoutPostResponse = (void);
+
+export type LogoutAuthLogoutPostError = unknown;
 
 export type SsoLoginAuthSsoGetResponse = (unknown);
 
@@ -593,6 +696,58 @@ export type RemoveAttendeeEventsAdminEventIdRemoveAttendeePostResponse = (unknow
 
 export type RemoveAttendeeEventsAdminEventIdRemoveAttendeePostError = (HTTPValidationError);
 
+export type GetEventJudgesEventsAdminEventIdJudgesGetData = {
+    path: {
+        event_id: string;
+    };
+};
+
+export type GetEventJudgesEventsAdminEventIdJudgesGetResponse = (Array<UserAttendee>);
+
+export type GetEventJudgesEventsAdminEventIdJudgesGetError = (HTTPValidationError);
+
+export type AddJudgeEventsAdminEventIdAddJudgePostData = {
+    body: JudgeEmail;
+    path: {
+        event_id: string;
+    };
+};
+
+export type AddJudgeEventsAdminEventIdAddJudgePostResponse = (UserAttendee);
+
+export type AddJudgeEventsAdminEventIdAddJudgePostError = (HTTPValidationError);
+
+export type RemoveJudgeEventsAdminEventIdRemoveJudgePostData = {
+    body: Body_remove_judge_events_admin__event_id__remove_judge_post;
+    path: {
+        event_id: string;
+    };
+};
+
+export type RemoveJudgeEventsAdminEventIdRemoveJudgePostResponse = (unknown);
+
+export type RemoveJudgeEventsAdminEventIdRemoveJudgePostError = (HTTPValidationError);
+
+export type RotateJudgeCodeEventsAdminEventIdJudgeCodePostData = {
+    path: {
+        event_id: string;
+    };
+};
+
+export type RotateJudgeCodeEventsAdminEventIdJudgeCodePostResponse = (JudgeCodeResponse);
+
+export type RotateJudgeCodeEventsAdminEventIdJudgeCodePostError = (HTTPValidationError);
+
+export type LockInFinalistsEventsAdminEventIdFinalistsPostData = {
+    path: {
+        event_id: string;
+    };
+};
+
+export type LockInFinalistsEventsAdminEventIdFinalistsPostResponse = (Array<FinalistResponse>);
+
+export type LockInFinalistsEventsAdminEventIdFinalistsPostError = (HTTPValidationError);
+
 export type GetEventLeaderboardEventsAdminEventIdLeaderboardGetData = {
     path: {
         event_id: string;
@@ -643,6 +798,58 @@ export type GetEventReferralsEventsAdminEventIdReferralsGetResponse = (Array<Ref
 
 export type GetEventReferralsEventsAdminEventIdReferralsGetError = (HTTPValidationError);
 
+export type RedeemJudgeCodeJudgingRedeemPostData = {
+    body: RedeemJudgeCode;
+};
+
+export type RedeemJudgeCodeJudgingRedeemPostResponse = (JudgeCodeRedeemed);
+
+export type RedeemJudgeCodeJudgingRedeemPostError = (HTTPValidationError);
+
+export type ListProjectsToJudgeJudgingEventIdProjectsGetData = {
+    path: {
+        event_id: string;
+    };
+};
+
+export type ListProjectsToJudgeJudgingEventIdProjectsGetResponse = (JudgeProjects);
+
+export type ListProjectsToJudgeJudgingEventIdProjectsGetError = (HTTPValidationError);
+
+export type ScoreProjectJudgingEventIdScoresProjectIdPutData = {
+    body: JudgeScoreUpsert;
+    path: {
+        event_id: string;
+        project_id: string;
+    };
+};
+
+export type ScoreProjectJudgingEventIdScoresProjectIdPutResponse = (JudgeScorePublic);
+
+export type ScoreProjectJudgingEventIdScoresProjectIdPutError = (HTTPValidationError);
+
+export type JudgingResultsJudgingEventIdResultsGetData = {
+    path: {
+        event_id: string;
+    };
+};
+
+export type JudgingResultsJudgingEventIdResultsGetResponse = (Array<JudgeResult>);
+
+export type JudgingResultsJudgingEventIdResultsGetError = (HTTPValidationError);
+
+export type GrantSelfJudgeJudgingTestEventIdGrantJudgePostData = {
+    path: {
+        event_id: string;
+    };
+};
+
+export type GrantSelfJudgeJudgingTestEventIdGrantJudgePostResponse = ({
+    [key: string]: (boolean);
+});
+
+export type GrantSelfJudgeJudgingTestEventIdGrantJudgePostError = (HTTPValidationError);
+
 export type GetProjectsProjectsMineGetResponse = (Array<ProjectPrivate>);
 
 export type GetProjectsProjectsMineGetError = unknown;
@@ -667,6 +874,14 @@ export type JoinProjectProjectsJoinPostData = {
 export type JoinProjectProjectsJoinPostResponse = (unknown);
 
 export type JoinProjectProjectsJoinPostError = (HTTPValidationError);
+
+export type UploadProjectImageProjectsImageUploadPostData = {
+    body: Body_upload_project_image_projects_image_upload_post;
+};
+
+export type UploadProjectImageProjectsImageUploadPostResponse = (unknown);
+
+export type UploadProjectImageProjectsImageUploadPostError = (HTTPValidationError);
 
 export type RemoveProjectCollaboratorProjectsProjectIdCollaboratorsUserIdDeleteData = {
     path: {
@@ -852,6 +1067,10 @@ export type GetUserPublicUsersUserIdGetError = (HTTPValidationError);
 
 export type CreateUserUsersPostData = {
     body: UserSignup;
+    query?: {
+        redirect?: string;
+        send_login_link?: boolean;
+    };
 };
 
 export type CreateUserUsersPostResponse = (unknown);

@@ -341,7 +341,7 @@
       <div class="navbar-end gap-2">
         <a href="/events" class="btn btn-ghost btn-sm">Events</a>
         <a
-          href="https://nova.kiwihacks.org"
+          href="https://nova.kiwihacks.com"
           target="_blank"
           rel="noreferrer"
           class="btn btn-secondary btn-sm"

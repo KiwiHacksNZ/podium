@@ -6,7 +6,7 @@ This file is the fast handoff for maintainers and future agents.
 
 - Frontend: Vercel project `kiwihacks-podium` (root dir: `frontend/`)
 - Backend: self-hosted Docker deployment (SSH + `docker compose`)
-- Public app URL: `https://vote.kiwihacks.org`
+- Public app URL: `https://vote.kiwihacks.com`
 
 ## Required Backend Env Vars
 
@@ -15,7 +15,8 @@ This file is the fast handoff for maintainers and future agents.
 - `PODIUM_PRODUCTION_URL`
 - `PODIUM_ACTIVE_EVENT_SERIES` (for production this should be `flagship`)
 - `PODIUM_TURNSTILE_SECRET_KEY`
-- `PODIUM_CORS_ORIGINS` (for example `https://vote.kiwihacks.org`)
+- `PODIUM_TURNSTILE_HOSTNAMES` (`vote.kiwihacks.com` in production)
+- `PODIUM_CORS_ORIGINS` (for example `https://vote.kiwihacks.com`)
 - `PODIUM_ALLOWED_HOSTS` (the backend hostname, without a scheme)
 - `PODIUM_TRUSTED_PROXY_HOSTS` (explicit cloudflared/container proxy IPs or CIDRs)
 
@@ -31,6 +32,13 @@ Optional but important:
 - `PODIUM_LOOPS_TRANSACTIONAL_ID`
 - `PODIUM_SENTRY_DSN`
 - Frontend `PUBLIC_SENTRY_DSN` in Vercel
+
+Required frontend variables in Vercel:
+
+- `PUBLIC_API_URL`
+- `PUBLIC_TURNSTILE_SITE_KEY` only when overriding the built-in production site key
+
+The Cloudflare Turnstile widget must allow `vote.kiwihacks.com` as a hostname.
 
 ## Critical Event Rule
 

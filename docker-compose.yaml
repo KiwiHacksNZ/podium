@@ -30,7 +30,7 @@ services:
       PODIUM_JWT_SECRET: ${PODIUM_JWT_SECRET:-local-dev-jwt-secret-change-me}
       PODIUM_SSO_CLIENT_ID: ${PODIUM_SSO_CLIENT_ID:-}
       PODIUM_SSO_CLIENT_SECRET: ${PODIUM_SSO_CLIENT_SECRET:-}
-      PODIUM_PRODUCTION_URL: ${PODIUM_PRODUCTION_URL:-https://vote.kiwihacks.org}
+      PODIUM_PRODUCTION_URL: ${PODIUM_PRODUCTION_URL:-https://vote.kiwihacks.com}
       PODIUM_ACTIVE_EVENT_SERIES: ${PODIUM_ACTIVE_EVENT_SERIES:-flagship}
       PODIUM_REDIS_URL: ""
     ports: ["8000:8000"]

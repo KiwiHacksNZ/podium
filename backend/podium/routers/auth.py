@@ -25,6 +25,7 @@ import httpx
 from podium.config import settings
 from podium.constants import BAD_AUTH
 from podium.validators.email import is_disposable_email
+from podium.validators.turnstile import require_turnstile
 from sqlalchemy.orm import selectinload
 from sqlalchemy import update
 from podium.db.postgres import MagicLink, User, UserPrivate, get_session, scalar_one_or_none, user_to_private, default_display_name
@@ -53,6 +54,7 @@ class UserLoginPayload(BaseModel):
 
 class LoginRequested(BaseModel):
     message: str
+    account_exists: bool
 
 
 def safe_redirect_path(redirect: str) -> str:
@@ -126,14 +128,9 @@ async def request_login(
     user: UserLoginPayload,
     redirect: Annotated[str, Query()],
     session: Annotated[AsyncSession, Depends(get_session)],
+    _turnstile: None = Depends(require_turnstile),
 ) -> LoginRequested:
-    """Send a magic link to the user's email.
-
-    Turnstile is intentionally not required here: the signup flow sends the
-    same single-use Turnstile token to both create_user and request_login, so
-    validating it twice would break the second call. The rate limiter (keyed
-    on user email / IP) provides bot protection instead.
-    """
+    """Send a magic link to the user's email after bot verification."""
     email = user.email.strip().lower()
     # Block disposable emails from requesting magic links
     if is_disposable_email(email):
@@ -141,7 +138,10 @@ async def request_login(
     existing = await scalar_one_or_none(session, select(User).where(User.email == email))
     if existing is not None:
         await send_magic_link(email, redirect=redirect, session=session)
-    return LoginRequested(message="If that account exists, a login link has been sent")
+    return LoginRequested(
+        message="If that account exists, a login link has been sent",
+        account_exists=existing is not None,
+    )
 
 
 class AuthenticatedUser(BaseModel):
@@ -162,9 +162,8 @@ def _set_access_cookie(response: Response, token: str) -> Response:
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         httponly=True,
         secure=secure,
-        # Frontend and API are on different registrable domains
-        # (vote.kiwihacks.org vs *.kiwihacks.com), so persistence needs a
-        # cross-site cookie. SameSite=None requires Secure.
+        # Keep browser sessions working when the frontend and API are deployed
+        # on different sites. SameSite=None requires Secure.
         samesite="none" if secure else "lax",
     )
     return response
