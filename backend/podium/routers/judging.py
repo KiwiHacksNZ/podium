@@ -9,11 +9,12 @@ Judging access is per event: an organizer either adds a judge directly or hands
 out the event's 6-digit judge code, which the judge redeems here.
 """
 
-from datetime import datetime, timezone
+import re
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 from pydantic import BaseModel
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -35,7 +36,12 @@ from podium.db.postgres import (
     scalar_all,
     scalar_one_or_none,
 )
-from podium.routers.auth import get_current_user
+from podium.routers.auth import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    _set_access_cookie,
+    create_access_token,
+    get_current_user,
+)
 
 router = APIRouter(prefix="/judging", tags=["judging"])
 
@@ -59,9 +65,12 @@ class JudgeProjects(BaseModel):
 
 class RedeemJudgeCode(BaseModel):
     code: str
+    name: str
 
 
 class JudgeCodeRedeemed(BaseModel):
+    access_token: str
+    token_type: str
     event_id: UUID
     event_name: str
     event_slug: str
@@ -96,13 +105,22 @@ def _score_to_public(score: JudgeScore) -> JudgeScorePublic:
 async def redeem_judge_code(
     request: Request,
     body: RedeemJudgeCode,
-    user: Annotated[User, Depends(get_current_user)],
+    response: Response,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> JudgeCodeRedeemed:
-    """Claim judge access with the 6-digit code an organizer handed out."""
+    """Claim judge access with the 6-digit code and a name — no sign-in needed.
+
+    Provisions a lightweight, code-only judge account keyed by (event, name) so
+    re-entering the same code and name on the same device resumes prior scoring,
+    then returns an access token the frontend uses like a normal login.
+    """
     code = body.code.strip()
     if not (len(code) == 6 and code.isdigit()):
         raise HTTPException(status_code=400, detail="Judge codes are 6 digits")
+
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Enter your name")
 
     event = await scalar_one_or_none(
         session, select(Event).where(Event.judge_code == code)
@@ -110,23 +128,41 @@ async def redeem_judge_code(
     if not event or event.deleted_at is not None:
         raise HTTPException(status_code=404, detail="That judge code isn't valid")
 
-    if event.owner_id == user.id:
-        raise HTTPException(
-            status_code=400, detail="You own this event — you don't need a judge code"
-        )
+    # Deterministic placeholder identity: same name + code + event resumes.
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "judge"
+    email = f"judge-{slug}-{event.id}@judge.invalid"[:255]
+
+    judge = await scalar_one_or_none(
+        session, select(User).where(User.email == email)
+    )
+    if judge is None:
+        judge = User(email=email, first_name=name[:50], display_name=name[:255])
+        session.add(judge)
+        await session.commit()
+        await session.refresh(judge)
 
     already = await scalar_one_or_none(
         session,
         select(EventJudgeLink).where(
-            EventJudgeLink.event_id == event.id, EventJudgeLink.user_id == user.id
+            EventJudgeLink.event_id == event.id, EventJudgeLink.user_id == judge.id
         ),
     )
     if not already:
-        session.add(EventJudgeLink(event_id=event.id, user_id=user.id))
+        session.add(EventJudgeLink(event_id=event.id, user_id=judge.id))
         await session.commit()
 
+    token = create_access_token(
+        data={"sub": email},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        token_type="access",
+    )
+    _set_access_cookie(response, token)
     return JudgeCodeRedeemed(
-        event_id=event.id, event_name=event.name, event_slug=event.slug
+        access_token=token,
+        token_type="access",
+        event_id=event.id,
+        event_name=event.name,
+        event_slug=event.slug,
     )
 
 

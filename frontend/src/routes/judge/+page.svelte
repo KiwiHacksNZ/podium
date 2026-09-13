@@ -3,25 +3,35 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { client } from "$lib/client/sdk.gen";
-  import { getAuthenticatedUser, validateToken } from "$lib/user.svelte";
+  import { validateToken } from "$lib/user.svelte";
   import { handleError } from "$lib/misc";
   import { asyncClick } from "$lib/actions/asyncClick";
   import { toast } from "svelte-sonner";
 
-  type Redeemed = { event_id: string; event_name: string; event_slug: string };
+  type Redeemed = {
+    access_token: string;
+    token_type: string;
+    event_id: string;
+    event_name: string;
+    event_slug: string;
+  };
 
   let code = $state("");
-  const isAuthenticated = $derived(!!getAuthenticatedUser().access_token);
-  const valid = $derived(/^\d{6}$/.test(code.trim()));
+  let name = $state("");
+  const valid = $derived(/^\d{6}$/.test(code.trim()) && name.trim().length > 0);
 
   async function redeem() {
-    if (!valid) {
+    if (!/^\d{6}$/.test(code.trim())) {
       toast.error("Judge codes are 6 digits");
+      return;
+    }
+    if (!name.trim()) {
+      toast.error("Enter your name");
       return;
     }
     const { data, error } = await client.post<Redeemed, unknown>({
       url: "/judging/redeem",
-      body: { code: code.trim() },
+      body: { code: code.trim(), name: name.trim() },
       throwOnError: false,
     });
     if (error) {
@@ -29,9 +39,9 @@
       return;
     }
     if (!data) return;
-    // Refresh the user so the new event shows in judge_event_ids before the
-    // judging page guards on it.
-    await validateToken(getAuthenticatedUser().access_token);
+    // The code redemption logs the judge in; validate the returned token so
+    // the judging page sees judge_event_ids before it guards on them.
+    await validateToken(data.access_token);
     toast.success(`You're a judge for ${data.event_name}`);
     await goto(`/events/${data.event_slug}/judge`);
   }
@@ -42,32 +52,34 @@
     <div class="card-body">
       <h1 class="card-title">Become a judge</h1>
       <p class="text-sm text-base-content/70">
-        Enter the 6-digit judge code your event organizer gave you.
+        Enter your name and the 6-digit judge code your event organizer gave
+        you. No account needed.
       </p>
 
-      {#if !isAuthenticated}
-        <div role="alert" class="alert alert-warning">
-          <span>Sign in first, then come back and enter your code.</span>
-        </div>
-      {:else}
-        <input
-          class="input input-bordered w-full font-mono text-2xl tracking-widest text-center"
-          inputmode="numeric"
-          autocomplete="one-time-code"
-          maxlength="6"
-          placeholder="000000"
-          aria-label="Judge code"
-          bind:value={code}
-          oninput={() => (code = code.replace(/\D/g, ""))}
-        />
-        <button
-          class="btn btn-primary btn-block"
-          disabled={!valid}
-          use:asyncClick={redeem}
-        >
-          Claim judge access
-        </button>
-      {/if}
+      <input
+        class="input input-bordered w-full"
+        autocomplete="name"
+        placeholder="Your name"
+        aria-label="Your name"
+        bind:value={name}
+      />
+      <input
+        class="input input-bordered w-full font-mono text-2xl tracking-widest text-center"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="6"
+        placeholder="000000"
+        aria-label="Judge code"
+        bind:value={code}
+        oninput={() => (code = code.replace(/\D/g, ""))}
+      />
+      <button
+        class="btn btn-primary btn-block"
+        disabled={!valid}
+        use:asyncClick={redeem}
+      >
+        Claim judge access
+      </button>
     </div>
   </div>
 </div>
