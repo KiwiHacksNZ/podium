@@ -9,6 +9,7 @@
  * When a new endpoint is added to backend/podium/routers/*.py, add a case here.
  */
 
+import { request as apiRequest } from '@playwright/test';
 import { test, expect } from './fixtures/auth';
 import { unique } from './utils/data';
 import {
@@ -871,10 +872,20 @@ test.describe('API coverage — JUDGING router', () => {
 
 			const redeemed = await redeemJudgeCode(userApi, code);
 			expect(redeemed.ok()).toBe(true);
-			expect((await redeemed.json()).event_slug).toBe(event.slug);
+			const { access_token, event_slug } = await redeemed.json();
+			expect(event_slug).toBe(event.slug);
 
-			expect((await getCurrentUser(userApi)).judge_event_ids).toContain(event.id);
-			expect((await judgeGetProjects(userApi, event.id)).ok()).toBe(true);
+			// Redeeming provisions a separate code-only judge identity rather than
+			// granting judge access to whoever made the call.
+			expect((await getCurrentUser(userApi)).judge_event_ids).not.toContain(event.id);
+			const judgeApi = await apiRequest.newContext({
+				extraHTTPHeaders: { Authorization: `Bearer ${access_token}` }
+			});
+			try {
+				expect((await judgeGetProjects(judgeApi, event.id)).ok()).toBe(true);
+			} finally {
+				await judgeApi.dispose();
+			}
 
 			// Rotating invalidates the old code
 			const second = await adminRotateJudgeCode(authedApi, event.id);

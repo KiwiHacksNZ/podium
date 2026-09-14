@@ -22,7 +22,12 @@ import {
 	setRoundOpen,
 	voteForProjects
 } from './helpers/api';
-import { createJudgeAndGetToken, createUserAndGetToken, secondaryUserEmail } from './helpers/users';
+import {
+	authedStorageState,
+	createJudgeAndGetToken,
+	createUserAndGetToken,
+	secondaryUserEmail
+} from './helpers/users';
 
 const REPO = 'https://github.com/heycastawhat/kiwihacks-podium';
 const IMAGE = 'https://raw.githubusercontent.com/heycastawhat/kiwihacks-podium/main/README.md';
@@ -35,10 +40,7 @@ async function createAuthenticatedPage(
 ): Promise<Page> {
 	const context = await browser.newContext({
 		baseURL,
-		storageState: {
-			cookies: [],
-			origins: [{ origin: baseURL, localStorage: [{ name: 'token', value: token }] }]
-		}
+		storageState: authedStorageState(token, baseURL)
 	});
 	const page = await context.newPage();
 	await page.goto('/');

@@ -36,8 +36,8 @@ both servers on demand (see `playwright.config.ts`).
 | `api-coverage.spec.ts` | **Every backend endpoint hit at least once via direct API calls** |
 
 Helpers: `helpers/api.ts` (endpoint wrappers), `helpers/users.ts` (secondary
-user setup, judge accounts), `helpers/jwt.ts` (magic-link JWT
-signing), `fixtures/auth.ts` (worker-scoped authed page + API contexts),
+user setup, judge accounts, magic-link tokens),
+`fixtures/auth.ts` (worker-scoped authed page + API contexts),
 `utils/data.ts` (`unique()` for collision-free data across workers).
 
 `createJudgeAndGetToken(email, name, eventId)` grants judging access for one

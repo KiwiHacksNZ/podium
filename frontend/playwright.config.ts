@@ -47,7 +47,10 @@ export default defineConfig({
 				// Pass through PODIUM_DATABASE_URL if set (for CI)
 				...(process.env.PODIUM_DATABASE_URL && { PODIUM_DATABASE_URL: process.env.PODIUM_DATABASE_URL }),
 				// Always disable Turnstile in test environment so fixtures can create users without CAPTCHA
-				PODIUM_TURNSTILE_SECRET_KEY: ''
+				PODIUM_TURNSTILE_SECRET_KEY: '',
+				// The dev server below is the only browser origin; without this CORS
+				// falls back to production_url and every in-page API call is blocked.
+				PODIUM_CORS_ORIGINS: 'http://127.0.0.1:4174,http://localhost:4174'
 			}
 		},
 		{

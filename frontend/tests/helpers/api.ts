@@ -151,7 +151,8 @@ export async function createProject(
 ) {
 	const response = await api.post(`${API_URL}/projects/`, { data });
 	await assertOk(response, 'createProject');
-	return response.json();
+	// The endpoint only echoes { id, join_code }, but callers want the name too.
+	return { ...data, ...(await response.json()) };
 }
 
 export async function joinProject(api: APIRequestContext, joinCode: string) {
@@ -331,8 +332,8 @@ export async function adminRotateJudgeCode(api: APIRequestContext, eventId: stri
 }
 
 /** Claim judge access with a 6-digit judge code. */
-export async function redeemJudgeCode(api: APIRequestContext, code: string) {
-	return api.post(`${API_URL}/judging/redeem`, { data: { code } });
+export async function redeemJudgeCode(api: APIRequestContext, code: string, name = 'Code Judge') {
+	return api.post(`${API_URL}/judging/redeem`, { data: { code, name } });
 }
 
 /** Grant/revoke is_admin / is_superadmin. Superadmin actor required. */

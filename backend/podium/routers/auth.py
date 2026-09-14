@@ -77,19 +77,24 @@ def create_access_token(
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-async def send_magic_link(
-    email: str, redirect: str, session: AsyncSession
-):
+async def issue_magic_link_token(email: str, session: AsyncSession) -> str:
+    """Record a single-use magic link and return its signed token."""
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
     link_id = token_urlsafe(32)
     session.add(MagicLink(id=link_id, email=email, expires_at=expires_at))
     await session.commit()
 
-    token = create_access_token(
+    return create_access_token(
         data={"sub": email, "jti": link_id},
         expires_delta=expires_at - datetime.now(timezone.utc),
         token_type="magic_link",
     )
+
+
+async def send_magic_link(
+    email: str, redirect: str, session: AsyncSession
+):
+    token = await issue_magic_link_token(email, session)
 
     query = urlencode({"token": token, "redirect": safe_redirect_path(redirect)})
     # URL fragments are not sent to frontend hosting/CDN logs or referrers.
@@ -384,3 +389,26 @@ async def get_current_user(
     if user is None:
         raise BAD_AUTH
     return user
+
+
+# =============================================================================
+# TEST-ONLY ENDPOINT
+# =============================================================================
+
+
+class TestMagicLink(BaseModel):
+    token: str
+
+
+@router.post("/auth/test/magic-link")
+async def issue_test_magic_link(
+    user: UserLoginPayload,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> TestMagicLink:
+    """Mint a real single-use magic-link token without sending email, so e2e
+    tests can log in. Only available when enable_test_endpoints is true."""
+    if not getattr(settings, "enable_test_endpoints", False):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    token = await issue_magic_link_token(user.email.strip().lower(), session)
+    return TestMagicLink(token=token)

@@ -307,6 +307,10 @@ export type TestEventCreate = {
     description?: string;
 };
 
+export type TestMagicLink = {
+    token: string;
+};
+
 export type UserAccessUpdate = {
     is_superadmin?: (boolean | null);
     is_admin?: (boolean | null);
@@ -579,6 +583,14 @@ export type SsoCallbackAuthSsoCallbackGetData = {
 export type SsoCallbackAuthSsoCallbackGetResponse = (unknown);
 
 export type SsoCallbackAuthSsoCallbackGetError = (HTTPValidationError);
+
+export type IssueTestMagicLinkAuthTestMagicLinkPostData = {
+    body: UserLoginPayload;
+};
+
+export type IssueTestMagicLinkAuthTestMagicLinkPostResponse = (TestMagicLink);
+
+export type IssueTestMagicLinkAuthTestMagicLinkPostError = (HTTPValidationError);
 
 export type ListOfficialEventsEventsOfficialGetResponse = (Array<EventPublic>);
 
