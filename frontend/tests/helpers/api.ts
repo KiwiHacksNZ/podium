@@ -323,6 +323,15 @@ export async function adminGetJudgeCards(api: APIRequestContext, eventId: string
 	return api.get(`${API_URL}/events/admin/${eventId}/judge-cards`);
 }
 
+/** Issue a replacement single-use card for one judge. Event owner required. */
+export async function adminReissueJudgeCard(
+	api: APIRequestContext,
+	eventId: string,
+	userId: string
+) {
+	return api.post(`${API_URL}/events/admin/${eventId}/judges/${userId}/card`);
+}
+
 /** List the judges for an event. Event owner required. */
 export async function adminGetJudges(api: APIRequestContext, eventId: string) {
 	return api.get(`${API_URL}/events/admin/${eventId}/judges`);

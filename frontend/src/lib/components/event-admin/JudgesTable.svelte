@@ -23,6 +23,25 @@
   let rotatedCode = $state<string | null>(null);
   const judgeCode = $derived(rotatedCode ?? event.judge_code ?? null);
 
+  // Code shown inline after reissuing, so an organiser can read it straight out
+  // to the judge standing in front of them.
+  let reissued = $state<Record<string, string>>({});
+  let reissuing = $state<string | null>(null);
+
+  async function reissueCard(judge: UserAttendee) {
+    reissuing = judge.id;
+    const { data, error } = await client.post<{ code: string }, unknown>({
+      url: `/events/admin/${event.id}/judges/${judge.id}/card`,
+      throwOnError: false,
+    });
+    reissuing = null;
+    if (error) {
+      handleError(error);
+      return;
+    }
+    if (data) reissued = { ...reissued, [judge.id]: data.code };
+  }
+
   let removeConfirmation: ConfirmationModal = $state() as ConfirmationModal;
   let judgeToRemove = $state<UserAttendee | null>(null);
 
@@ -154,13 +173,28 @@
       <div class="overflow-x-auto">
         <table class="table table-zebra table-sm w-full">
           <thead>
-            <tr><th>Name</th><th>Email</th><th></th></tr>
+            <tr><th>Name</th><th>Email</th><th>New card</th><th></th></tr>
           </thead>
           <tbody>
             {#each judges as judge (judge.id)}
               <tr>
                 <td>{judge.display_name || "—"}</td>
                 <td class="font-mono text-xs">{judge.judge_email ?? judge.email}</td>
+                <td>
+                  {#if reissued[judge.id]}
+                    <span class="font-mono text-lg tracking-widest"
+                      >{reissued[judge.id]}</span
+                    >
+                  {:else}
+                    <button
+                      class="btn btn-outline btn-xs"
+                      disabled={reissuing === judge.id}
+                      onclick={() => reissueCard(judge)}
+                    >
+                      {reissuing === judge.id ? "…" : "New card"}
+                    </button>
+                  {/if}
+                </td>
                 <td>
                   <button
                     class="btn btn-ghost btn-xs"

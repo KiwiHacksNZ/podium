@@ -23,6 +23,7 @@ import {
 	adminGetJudgeCards,
 	adminGetJudges,
 	adminMintJudgeCards,
+	adminReissueJudgeCard,
 	adminPatchEvent,
 	adminRemoveJudge,
 	adminRotateJudgeCode,
@@ -945,6 +946,38 @@ test.describe('API coverage — JUDGING router', () => {
 		expect(listed).toHaveLength(2);
 		expect(listed.every((c: { redeemed_at: string | null }) => c.redeemed_at)).toBe(true);
 		expect(listed.find((c: { code: string }) => c.code === first).redeemed_by).toBe('Card Judge');
+
+		// A judge who burned their card gets a replacement, and redeeming it with
+		// the same email drops them back on the identity they already had.
+		const judges = await (await adminGetJudges(authedApi, event.id)).json();
+		const burned = judges.find(
+			(j: { judge_email?: string }) => j.judge_email === `card+${tag}@example.com`
+		);
+		const replacement = await (
+			await adminReissueJudgeCard(authedApi, event.id, burned.id)
+		).json();
+		expect(replacement.code).toMatch(/^\d{6}$/);
+		expect(replacement.issued_for).toBe('Card Judge');
+
+		const anon2 = await apiRequest.newContext();
+		try {
+			const back = await redeemJudgeCode(
+				anon2,
+				replacement.code,
+				'Card Judge',
+				`card+${tag}@example.com`
+			);
+			expect(back.ok()).toBe(true);
+			const judgesAfter = await (await adminGetJudges(authedApi, event.id)).json();
+			// Same person, not a duplicate judge row
+			expect(
+				judgesAfter.filter(
+					(j: { judge_email?: string }) => j.judge_email === `card+${tag}@example.com`
+				)
+			).toHaveLength(1);
+		} finally {
+			await anon2.dispose();
+		}
 	});
 });
 

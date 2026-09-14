@@ -116,6 +116,7 @@ export type JudgeCard = {
     code: string;
     redeemed_at?: (string | null);
     redeemed_by?: (string | null);
+    issued_for?: (string | null);
 };
 
 export type JudgeCardMint = {
@@ -782,6 +783,17 @@ export type MintJudgeCardsEventsAdminEventIdJudgeCardsPostData = {
 export type MintJudgeCardsEventsAdminEventIdJudgeCardsPostResponse = (Array<JudgeCard>);
 
 export type MintJudgeCardsEventsAdminEventIdJudgeCardsPostError = (HTTPValidationError);
+
+export type ReissueJudgeCardEventsAdminEventIdJudgesUserIdCardPostData = {
+    path: {
+        event_id: string;
+        user_id: string;
+    };
+};
+
+export type ReissueJudgeCardEventsAdminEventIdJudgesUserIdCardPostResponse = (JudgeCard);
+
+export type ReissueJudgeCardEventsAdminEventIdJudgesUserIdCardPostError = (HTTPValidationError);
 
 export type LockInFinalistsEventsAdminEventIdFinalistsPostData = {
     path: {

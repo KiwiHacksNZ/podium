@@ -33,3 +33,9 @@ class JudgeCode(SQLModel, table=True):
     redeemed_by_id: UUID | None = Field(
         default=None, foreign_key="users.id", nullable=True
     )
+    # Set when a card is reissued to replace a specific judge's lost or spent
+    # one. Recorded for the organiser's benefit, not enforced at redeem time —
+    # see redeem_judge_code for why.
+    issued_for_id: UUID | None = Field(
+        default=None, foreign_key="users.id", nullable=True
+    )

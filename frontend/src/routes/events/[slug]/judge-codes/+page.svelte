@@ -11,6 +11,7 @@
     code: string;
     redeemed_at?: string | null;
     redeemed_by?: string | null;
+    issued_for?: string | null;
   };
 
   const { data } = $props();
@@ -103,7 +104,11 @@
         <article class="card-cut">
           <p class="card-line">Go to {joinUrl} and enter the code</p>
           <p class="card-code">{card.code}</p>
-          <p class="card-line">To judge {data.event.name}</p>
+          <p class="card-line">
+            To judge {data.event.name}{card.issued_for
+              ? ` — for ${card.issued_for}`
+              : ""}
+          </p>
         </article>
       {/each}
     </div>
@@ -115,7 +120,9 @@
           {#each spent as card (card.code)}
             <li>
               <span class="font-mono">{card.code}</span>
-              — {card.redeemed_by ?? "a judge"}
+              — {card.redeemed_by ?? "a judge"}{card.issued_for
+                ? ` (reissued for ${card.issued_for})`
+                : ""}
             </li>
           {/each}
         </ul>
