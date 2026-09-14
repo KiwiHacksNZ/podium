@@ -135,10 +135,14 @@
   {/each}
 </svelte:head>
 
+<!-- top-center keeps toasts clear of bottom-of-screen controls on mobile, and
+     daisyUI's `toast` class is deliberately absent: it is a container style
+     (position: fixed; bottom: 1rem) that pinned every toast over the page. -->
 <Toaster
+  position="top-center"
   toastOptions={{
     unstyled: true,
-    class: "toast alert",
+    class: "alert w-full",
     classes: {
       success: "alert-success",
       error: "alert-error",

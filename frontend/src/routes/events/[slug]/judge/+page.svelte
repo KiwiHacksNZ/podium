@@ -116,11 +116,13 @@
   );
   const scoredCount = $derived(projects.filter((p) => isScored(p.id)).length);
 
-  async function save() {
-    if (!project || !draft) return;
+  /** Returns false if the score could not be stored. `silent` suppresses the
+      toast, used when saving happens as a side effect of navigating. */
+  async function persist(silent: boolean): Promise<boolean> {
+    if (!project || !draft) return false;
     if (!complete) {
-      toast.error("Set all four criteria before saving");
-      return;
+      if (!silent) toast.error("Set all four criteria before saving");
+      return false;
     }
     const { error: saveError } = await client.put<JudgeScore, unknown>({
       url: `/judging/${data.event.id}/scores/${project.id}`,
@@ -134,10 +136,25 @@
     });
     if (saveError) {
       handleError(saveError);
-      return;
+      return false;
     }
     stored[project.id] = { ...draft };
-    toast.success(`Saved your grades for ${project.name}`);
+    if (!silent) toast.success(`Saved your grades for ${project.name}`);
+    return true;
+  }
+
+  async function save() {
+    await persist(false);
+  }
+
+  /** Move between projects, saving a complete-but-unsaved score on the way out
+      so a judge never loses grades by tapping Next. A partly filled score is
+      left alone — skipping a project is allowed. */
+  async function go(delta: number) {
+    const target = index + delta;
+    if (target < 0 || target >= projects.length) return;
+    if (complete && dirty && !(await persist(true))) return;
+    index = target;
   }
 </script>
 
@@ -259,12 +276,12 @@
       <button
         class="btn join-item"
         disabled={index === 0}
-        onclick={() => (index -= 1)}>Previous</button
+        use:asyncClick={() => go(-1)}>Previous</button
       >
       <button
         class="btn join-item"
         disabled={index >= projects.length - 1}
-        onclick={() => (index += 1)}>Next</button
+        use:asyncClick={() => go(1)}>Next</button
       >
     </div>
   </div>
