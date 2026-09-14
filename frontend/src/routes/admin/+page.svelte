@@ -5,6 +5,7 @@
   import { authHeaders, getAuthenticatedUser, isAuthenticated } from "$lib/user.svelte";
   import type { EventPrivate, ProjectPrivate } from "$lib/client/types.gen";
   import { toast } from "svelte-sonner";
+  import { formatDate } from "$lib/misc";
 
   type Page<T> = { items: T[]; total: number; page: number; size: number; pages: number };
 
@@ -188,7 +189,7 @@
                     </td>
                     <td><span class="badge">{event.phase}</span></td>
                     <td class="font-mono text-xs">{event.owner_id}</td>
-                    <td>{event.deleted_at ? new Date(event.deleted_at).toLocaleDateString() : "—"}</td>
+                    <td>{formatDate(event.deleted_at)}</td>
                     <td class="flex gap-2">
                       <button class="btn btn-outline btn-xs" onclick={() => toggleProjects(event)}>
                         {expandedEventId === event.id ? "Hide Projects" : "Projects"}

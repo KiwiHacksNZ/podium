@@ -5,6 +5,7 @@
   import { env } from "$env/dynamic/public";
   import type { EventPrivate } from "$lib/client/types.gen";
   import { toast } from "svelte-sonner";
+  import { formatDate } from "$lib/misc";
 
   type UserSummary = {
     id: string;
@@ -271,7 +272,7 @@
                   <td class="font-mono text-sm">{event.demo_validation}</td>
                   <td class="font-mono text-xs">{event.feature_flags_csv || "—"}</td>
                   <td class="text-sm">{usersPage.items.find((u) => u.id === event.owner_id)?.email ?? event.owner_id}</td>
-                  <td>{event.deleted_at ? new Date(event.deleted_at).toLocaleDateString() : "—"}</td>
+                  <td>{formatDate(event.deleted_at)}</td>
                   <td class="flex gap-2">
                     <button
                       class="btn btn-outline btn-xs"

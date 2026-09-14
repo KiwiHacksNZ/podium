@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { VoteAuditResponse } from "$lib/client/types.gen";
+  import { formatDateTime } from "$lib/misc";
 
   interface Props {
     logs: VoteAuditResponse[];
@@ -39,7 +40,7 @@
                 </td>
                 <td>{userLookup.get(log.voter_id) || log.voter_id}</td>
                 <td>{projectLookup.get(log.project_id) || log.project_id}</td>
-                <td class="whitespace-nowrap text-xs">{new Date(log.created_at).toLocaleString()}</td>
+                <td class="whitespace-nowrap text-xs">{formatDateTime(log.created_at)}</td>
                 <td class="font-mono text-xs">{log.ip_address || "unknown"}</td>
               </tr>
             {/each}
