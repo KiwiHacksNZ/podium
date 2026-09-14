@@ -7,7 +7,7 @@
   import { asyncClick } from "$lib/actions/asyncClick";
   import Modal from "$lib/components/Modal.svelte";
   import { isValidItchUrl, isValidGitHubUrl, isValidGitUrl } from "$lib/validation";
-  import { getAuthenticatedUser } from "$lib/user.svelte";
+  import { authHeaders } from "$lib/user.svelte";
   import { env } from "$env/dynamic/public";
 
   // Accept callback prop for when project is successfully created
@@ -112,9 +112,8 @@
     try {
       const response = await fetch(`${env.PUBLIC_API_URL}/projects/image-upload`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${getAuthenticatedUser().access_token}`,
-        },
+        headers: authHeaders(),
+        credentials: "include",
         body: formData,
       });
       const body = await response.json();

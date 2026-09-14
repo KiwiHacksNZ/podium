@@ -10,7 +10,7 @@
   import { env } from "$env/dynamic/public";
   import MaintenanceMode from "$lib/components/MaintenanceMode.svelte";
 
-  import { getAuthenticatedUser, signOut } from "$lib/user.svelte";
+  import { getAuthenticatedUser, isAuthenticated, signOut } from "$lib/user.svelte";
   import NoticeAndHelp from "$lib/components/NoticeAndHelp.svelte";
   import UpdateUser from "$lib/components/UpdateUser.svelte";
   import AirtableHitsCounter from "$lib/components/AirtableHitsCounter.svelte";
@@ -36,15 +36,7 @@
       [],
   );
 
-  // Check if user is authenticated
-  const isAuthenticated = $derived.by(() => {
-    try {
-      const user = getAuthenticatedUser();
-      return user && user.access_token && user.access_token !== "";
-    } catch {
-      return false;
-    }
-  });
+  const isAuthed = $derived(isAuthenticated());
 
   const getDisplayName = () => {
     const user = getAuthenticatedUser().user;
@@ -161,7 +153,7 @@
 
 {#if env.PUBLIC_MAINTENANCE_MODE === "true"}
   <MaintenanceMode />
-{:else if page.url.pathname !== "/login" && isAuthenticated}
+{:else if page.url.pathname !== "/login" && isAuthed}
   <!-- Sidebar Layout for authenticated users -->
   <div class="drawer lg:drawer-open">
     <input id="sidebar-drawer" type="checkbox" class="drawer-toggle" />
@@ -369,7 +361,7 @@
 {/if}
 
 <!-- Global Theme Switcher (Bottom Left) -->
-{#if !isAuthenticated}
+{#if !isAuthed}
   <div class="fixed bottom-4 left-4 z-50">
     <ThemeSwitcher />
   </div>

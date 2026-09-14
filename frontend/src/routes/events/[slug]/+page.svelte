@@ -2,7 +2,7 @@
   import type { PageData } from "./$types";
   import AdminPanel from "$lib/components/event-admin/AdminPanel.svelte";
   import type { EventPrivate } from "$lib/client/types.gen";
-  import { getAuthenticatedUser } from "$lib/user.svelte";
+  import { getAuthenticatedUser, isAuthenticated } from "$lib/user.svelte";
   import { toast } from "svelte-sonner";
   import { handleError } from "$lib/misc";
   import { client } from "$lib/client/sdk.gen";
@@ -39,7 +39,7 @@
     }
   }
 
-  const isAuthenticated = $derived(!!getAuthenticatedUser().access_token);
+  const isAuthed = $derived(isAuthenticated());
   const isJudge = $derived(
     !!getAuthenticatedUser().user.judge_event_ids?.includes(data.event.id),
   );
@@ -99,7 +99,7 @@
     <div class="divider"></div>
     <div class="card bg-base-200 text-center">
       <div class="card-body gap-2 py-4">
-        {#if isAuthenticated}
+        {#if isAuthed}
           <!-- Authenticated but not attending: let them join inline -->
           <p class="text-base-content/70 text-sm">
             You're not attending this event yet.

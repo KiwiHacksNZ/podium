@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { SuperadminService, client } from "$lib/client/sdk.gen";
-  import { getAuthenticatedUser } from "$lib/user.svelte";
+  import { authHeaders, getAuthenticatedUser, isAuthenticated } from "$lib/user.svelte";
   import { env } from "$env/dynamic/public";
   import type { EventPrivate } from "$lib/client/types.gen";
   import { toast } from "svelte-sonner";
@@ -138,8 +138,7 @@
   }
 
   async function exportProjectsCsv(event: EventPrivate) {
-    const token = getAuthenticatedUser().access_token;
-    if (!token) {
+    if (!isAuthenticated()) {
       toast.error("You must be signed in to export");
       return;
     }
@@ -147,10 +146,8 @@
     exportingProjectsEventId = event.id;
     try {
       const response = await fetch(`${env.PUBLIC_API_URL}/superadmin/events/${event.id}/projects/csv`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "ngrok-skip-browser-warning": "hi",
-        },
+        headers: { ...authHeaders(), "ngrok-skip-browser-warning": "hi" },
+        credentials: "include",
       });
 
       if (!response.ok) {

@@ -33,6 +33,21 @@ export function setAuthenticatedUser(newUser: AuthenticatedUser) {
   user = newUser;
 }
 
+/**
+ * Browser sessions authenticate with an HttpOnly cookie, which JS can't read —
+ * those users have no access_token, so identity is the only reliable signal.
+ */
+export function isAuthenticated(): boolean {
+  return Boolean(user.user.id);
+}
+
+/** Auth headers for hand-rolled fetches; pair with `credentials: "include"`. */
+export function authHeaders(): Record<string, string> {
+  return user.access_token
+    ? { Authorization: `Bearer ${user.access_token}` }
+    : {};
+}
+
 export function signOut() {
   user = defaultAuthenticatedUser;
   void fetch(`${env.PUBLIC_API_URL}/auth/logout`, {

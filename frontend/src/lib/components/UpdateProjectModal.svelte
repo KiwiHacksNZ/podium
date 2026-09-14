@@ -8,7 +8,7 @@
   import { onMount } from "svelte";
   import Modal from "$lib/components/Modal.svelte";
   import ConfirmationModal from "$lib/components/ConfirmationModal.svelte";
-  import { getAuthenticatedUser } from "$lib/user.svelte";
+  import { authHeaders } from "$lib/user.svelte";
   import { env } from "$env/dynamic/public";
 
   // let events: Event[] = $state([]);
@@ -132,9 +132,8 @@
     try {
       const response = await fetch(`${env.PUBLIC_API_URL}/projects/image-upload`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${getAuthenticatedUser().access_token}`,
-        },
+        headers: authHeaders(),
+        credentials: "include",
         body: formData,
       });
       const body = await response.json();

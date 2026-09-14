@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { defaultUser, getAuthenticatedUser } from "$lib/user.svelte";
+  import { defaultUser, getAuthenticatedUser, isAuthenticated } from "$lib/user.svelte";
   import { toast, Toaster } from "svelte-sonner";
   import { onMount } from "svelte";
   import { validateToken } from "$lib/user.svelte";
@@ -168,7 +168,7 @@
 </script>
 
 <div class="p-4 max-w-md mx-auto" {...rest}>
-  {#if getAuthenticatedUser().access_token}
+  {#if isAuthenticated()}
     <div class="text-center">
       <h2 class="text-2xl font-bold mb-2">
         You are logged in as {getAuthenticatedUser().user.email}
