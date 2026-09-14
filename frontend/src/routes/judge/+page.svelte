@@ -18,7 +18,11 @@
 
   let code = $state("");
   let name = $state("");
-  const valid = $derived(/^\d{6}$/.test(code.trim()) && name.trim().length > 0);
+  let email = $state("");
+  const emailLooksValid = $derived(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()));
+  const valid = $derived(
+    /^\d{6}$/.test(code.trim()) && name.trim().length > 0 && emailLooksValid,
+  );
 
   async function redeem() {
     if (!/^\d{6}$/.test(code.trim())) {
@@ -29,9 +33,13 @@
       toast.error("Enter your name");
       return;
     }
+    if (!emailLooksValid) {
+      toast.error("Enter a valid email address");
+      return;
+    }
     const { data, error } = await client.post<Redeemed, unknown>({
       url: "/judging/redeem",
-      body: { code: code.trim(), name: name.trim() },
+      body: { code: code.trim(), name: name.trim(), email: email.trim() },
       throwOnError: false,
     });
     if (error) {
@@ -52,8 +60,8 @@
     <div class="card-body">
       <h1 class="card-title">Become a judge</h1>
       <p class="text-sm text-base-content/70">
-        Enter your name and the 6-digit judge code your event organizer gave
-        you. No account needed.
+        Enter your name, email and the 6-digit judge code your event organizer
+        gave you. No account needed — the email just lets organisers reach you.
       </p>
 
       <input
@@ -62,6 +70,14 @@
         placeholder="Your name"
         aria-label="Your name"
         bind:value={name}
+      />
+      <input
+        class="input input-bordered w-full"
+        type="email"
+        autocomplete="email"
+        placeholder="you@example.com"
+        aria-label="Your email"
+        bind:value={email}
       />
       <input
         class="input input-bordered w-full font-mono text-2xl tracking-widest text-center"

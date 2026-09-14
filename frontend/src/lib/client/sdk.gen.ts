@@ -259,6 +259,10 @@ export class EventsService {
     /**
      * Cleanup Test Data
      * Delete all test data created by e2e tests. Only available when enable_test_endpoints is true.
+     *
+     * Unauthenticated on purpose: the e2e teardown has no way to mint an admin, and
+     * production refuses to boot with enable_test_endpoints set, so this route only
+     * ever exists in dev and CI.
      */
     public static cleanupTestDataEventsTestCleanupPost<ThrowOnError extends boolean = false>(options?: OptionsLegacyParser<unknown, ThrowOnError>) {
         return (options?.client ?? client).post<CleanupTestDataEventsTestCleanupPostResponse, CleanupTestDataEventsTestCleanupPostError, ThrowOnError>({
@@ -312,7 +316,7 @@ export class EventsService {
     
     /**
      * Get Event Judges
-     * The users judging this event.
+     * The users judging this event, with the contact email code-only judges gave.
      */
     public static getEventJudgesEventsAdminEventIdJudgesGet<ThrowOnError extends boolean = false>(options: OptionsLegacyParser<GetEventJudgesEventsAdminEventIdJudgesGetData, ThrowOnError>) {
         return (options?.client ?? client).get<GetEventJudgesEventsAdminEventIdJudgesGetResponse, GetEventJudgesEventsAdminEventIdJudgesGetError, ThrowOnError>({
@@ -436,11 +440,12 @@ export class EventsService {
 export class JudgingService {
     /**
      * Redeem Judge Code
-     * Claim judge access with the 6-digit code and a name — no sign-in needed.
+     * Claim judge access with the 6-digit code, a name and an email — no sign-in.
      *
-     * Provisions a lightweight, code-only judge account keyed by (event, name) so
-     * re-entering the same code and name on the same device resumes prior scoring,
-     * then returns an access token the frontend uses like a normal login.
+     * Provisions a lightweight, code-only judge account keyed by (event, email) so
+     * re-entering the same code and email resumes prior scoring, then returns an
+     * access token the frontend uses like a normal login. The email is also kept
+     * against the event so organisers can contact their judges.
      */
     public static redeemJudgeCodeJudgingRedeemPost<ThrowOnError extends boolean = false>(options: OptionsLegacyParser<RedeemJudgeCodeJudgingRedeemPostData, ThrowOnError>) {
         return (options?.client ?? client).post<RedeemJudgeCodeJudgingRedeemPostResponse, RedeemJudgeCodeJudgingRedeemPostError, ThrowOnError>({

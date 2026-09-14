@@ -110,6 +110,14 @@
       >
         {rotating ? "Generating…" : judgeCode ? "New code" : "Generate code"}
       </button>
+      {#if judgeCode}
+        <a
+          class="btn btn-outline btn-sm"
+          href="/events/{event.slug}/judge-codes"
+          target="_blank"
+          rel="noopener">Print cards</a
+        >
+      {/if}
       <span class="text-sm text-base-content/70 flex-1 min-w-60">
         Judges claim access by entering this at <span class="font-mono"
           >/judge</span
@@ -154,7 +162,7 @@
             {#each judges as judge (judge.id)}
               <tr>
                 <td>{judge.display_name || "—"}</td>
-                <td class="font-mono text-xs">{judge.email}</td>
+                <td class="font-mono text-xs">{judge.judge_email ?? judge.email}</td>
                 <td>
                   <button
                     class="btn btn-ghost btn-xs"

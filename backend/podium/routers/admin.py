@@ -45,6 +45,8 @@ class UserAttendee(BaseModel):
     display_name: str
     first_name: str
     last_name: str
+    # Only set for code-only judges, whose `email` is an unroutable placeholder.
+    judge_email: str | None = None
 
 
 class VoteResponse(BaseModel):
@@ -189,8 +191,15 @@ async def get_event_judges(
     user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[UserAttendee]:
-    """The users judging this event."""
+    """The users judging this event, with the contact email code-only judges gave."""
     event = await get_owned_event(event_id, user, session, selectinload(Event.judges))
+    contact = {
+        link.user_id: link.judge_email
+        for link in await scalar_all(
+            session,
+            select(EventJudgeLink).where(EventJudgeLink.event_id == event_id),
+        )
+    }
     return [
         UserAttendee(
             id=j.id,
@@ -198,6 +207,7 @@ async def get_event_judges(
             display_name=j.display_name,
             first_name=j.first_name,
             last_name=j.last_name,
+            judge_email=contact.get(j.id),
         )
         for j in event.judges
     ]
