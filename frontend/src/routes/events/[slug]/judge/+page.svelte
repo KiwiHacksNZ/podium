@@ -115,6 +115,12 @@
     ),
   );
   const scoredCount = $derived(projects.filter((p) => isScored(p.id)).length);
+  const allScored = $derived(
+    projects.length > 0 && scoredCount === projects.length,
+  );
+  // Once everything is graded the grading UI is replaced by a thank-you, unless
+  // the judge asks to go back and change something.
+  let reviewing = $state(false);
 
   /** Returns false if the score could not be stored. `silent` suppresses the
       toast, used when saving happens as a side effect of navigating. */
@@ -147,14 +153,21 @@
     await persist(false);
   }
 
-  /** Move between projects, saving a complete-but-unsaved score on the way out
-      so a judge never loses grades by tapping Next. A partly filled score is
-      left alone — skipping a project is allowed. */
-  async function go(delta: number) {
-    const target = index + delta;
-    if (target < 0 || target >= projects.length) return;
+  /** Move to a project, saving a complete-but-unsaved score on the way out so a
+      judge never loses grades by navigating. A partly filled score is left
+      alone — skipping a project is allowed. */
+  async function goTo(target: number) {
+    if (target < 0 || target >= projects.length || target === index) return;
     if (complete && dirty && !(await persist(true))) return;
     index = target;
+  }
+
+  async function go(delta: number) {
+    await goTo(index + delta);
+  }
+
+  async function pick(event: Event) {
+    await goTo(Number((event.currentTarget as HTMLSelectElement).value));
   }
 </script>
 
@@ -171,6 +184,28 @@
   <div role="alert" class="alert alert-info max-w-2xl mx-auto mt-6">
     <span>There are no projects to judge yet. Check back later.</span>
   </div>
+{:else if allScored && !reviewing}
+  <div class="container mx-auto max-w-3xl p-4 sm:p-6">
+    <section class="rounded-box bg-emerald-600 text-white p-8 text-center">
+      <span
+        class="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-sm font-extrabold uppercase tracking-wide text-emerald-700"
+      >
+        All done
+      </span>
+      <h1 class="mt-4 text-3xl sm:text-4xl font-extrabold">Thanks!</h1>
+      <p class="mt-3 text-emerald-50/90">
+        You have graded all {projects.length}
+        {projects.length === 1 ? "project" : "projects"} for {data.event.name}.
+        Your scores are saved — nothing else to do.
+      </p>
+      <button
+        class="btn btn-sm mt-6 bg-emerald-50 text-emerald-700 border-none hover:bg-white"
+        onclick={() => (reviewing = true)}
+      >
+        Review my grades
+      </button>
+    </section>
+  </div>
 {:else}
   <div class="container mx-auto max-w-3xl p-4 sm:p-6 flex flex-col gap-6">
     <header class="flex flex-col gap-2">
@@ -184,24 +219,23 @@
       {/if}
     </header>
 
-    <!-- Progress strip: jump to any project, filled means fully scored -->
-    <div class="flex flex-wrap gap-2">
-      {#each projects as p, i}
-        <button
-          type="button"
-          class="btn btn-xs {i === index
-            ? 'btn-primary'
-            : isScored(p.id)
-              ? 'btn-success'
-              : 'btn-ghost border border-base-300'}"
-          aria-current={i === index ? "true" : undefined}
-          aria-label={`Project ${i + 1}: ${p.name}${isScored(p.id) ? " (scored)" : ""}`}
-          onclick={() => (index = i)}
-        >
-          {i + 1}
-        </button>
-      {/each}
-    </div>
+    <!-- Judges rarely grade in list order — presenters run late, swap slots —
+         so pick by name rather than stepping through. -->
+    <label class="form-control">
+      <span class="label-text font-semibold">Jump to a project</span>
+      <select
+        class="select select-bordered w-full mt-1"
+        value={index}
+        onchange={pick}
+      >
+        {#each projects as p, i}
+          <option value={i}>
+            {isScored(p.id) ? "✓" : "○"}
+            {p.name}
+          </option>
+        {/each}
+      </select>
+    </label>
 
     <div class="card bg-base-200 rounded-box">
       <div class="card-body gap-3">

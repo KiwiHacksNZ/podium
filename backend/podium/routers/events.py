@@ -66,7 +66,7 @@ async def list_official_events(
     official_events = [
         EventPublic.model_validate(e)
         for e in all_events
-        if active_series in e.feature_flags_list
+        if active_series in e.feature_flags_list and e.phase != EventPhase.HIDDEN
     ]
 
     return official_events
