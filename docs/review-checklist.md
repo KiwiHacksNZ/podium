@@ -16,7 +16,12 @@ Flows to verify after major changes. **Most core flows are covered by e2e tests*
 - [ ] Add a judge by email from the admin panel's Judges card, and remove them
 - [ ] A judge for one event gets no access to another event
 - [ ] Open the judging round with the admin panel's Rounds switch
+- [ ] Print judge cards from the Judges card; each carries a different code
+- [ ] A card's code works once — a second redeem is refused
+- [ ] "New card" reissues for one judge; redeeming with the same email keeps their scores
 - [ ] Score a project on all four criteria; reload and confirm it persisted
+- [ ] Tapping Next saves the current score without pressing Save
+- [ ] Once every project is scored the grading UI is replaced by the thank-you
 - [ ] Non-judge is refused the judging page
 - [ ] Organizer sees judge standings and locks in the top 5 finalists
 

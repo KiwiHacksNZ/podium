@@ -20,19 +20,21 @@ Core entities:
 - **Project** — name, repo, image_url, demo, owner_id, event_id, points, is_finalist, validation_status, validation_message
 - **Vote** — voter_id, project_id, event_id, rank (unique on voter+project, and on voter+event+rank)
 - **JudgeScore** — judge_id, project_id, event_id, originality/technicality/theme/usability (unique on judge+project)
+- **JudgeCode** — event_id, code (unique), redeemed_at, redeemed_by_id, issued_for_id — single-use codes for printed cards
 
 M2M relationships via junction tables:
 - `event_attendees` — User ↔ Event
-- `event_judges` — User ↔ Event (judging access, per event)
+- `event_judges` — User ↔ Event (judging access, per event; carries `judge_email` for code-only judges)
 - `project_collaborators` — User ↔ Project
 
 ## Event Lifecycle
 
-Events move through phases in order: `draft` → `submission` → `judging` → `voting` → `closed`.
+Events move through phases in order: `draft` → `submission` → `judging` → `voting` → `closed`. `hidden` sits outside that run and can be set at any point.
 
 | Phase | What's allowed |
 |---|---|
-| `draft` | Not yet visible to users |
+| `hidden` | Kept out of `/events/official`; a direct link still resolves |
+| `draft` | Listed publicly, but not yet accepting submissions |
 | `submission` | Users can join and submit projects |
 | `judging` | Submissions closed; judges are scoring |
 | `voting` | Finalists picked; attendees are ranking |
@@ -96,7 +98,11 @@ Sign in → Select event → (Address check) → Submit project → Validation �
 
 Results come out of two rounds.
 
-**Judges.** Judging access is scoped to one event, held in the `event_judges` link table — judging one event grants nothing on another. Two ways in: the organizer adds someone by email from the admin panel's Judges card (`POST /events/admin/{id}/add-judge`), or they hand out the event's rotatable 6-digit code (`POST /events/admin/{id}/judge-code`) which the judge redeems at `/judge` (`POST /judging/redeem`). Superadmins bypass the check, as everywhere else. A user's judged events come back on `/users/current` as `judge_event_ids`.
+**Judges.** Judging access is scoped to one event, held in the `event_judges` link table — judging one event grants nothing on another. Two ways in: the organizer adds someone by email from the admin panel's Judges card (`POST /events/admin/{id}/add-judge`), or they hand out a 6-digit code which the judge redeems at `/judge` (`POST /judging/redeem`) along with their name and email.
+
+Two kinds of code exist. The event's own `judge_code` (`POST /events/admin/{id}/judge-code`) is shared and unlimited. Printed cards instead carry single-use codes from the `judge_codes` table (`POST /events/admin/{id}/judge-cards` to mint, `/events/{slug}/judge-codes` to print), each burned by the first judge to redeem it so a card maps to one judge; `POST /events/admin/{id}/judges/{user_id}/card` issues a replacement for someone locked out.
+
+A code-only judge's login identity is a hash of their email in the unroutable `@judge.invalid` namespace, never the address itself — otherwise a 6-digit code would mint a session for any real account whose email someone could guess. The address they gave is kept on `event_judges.judge_email` for the organizer. Because identity comes from the email rather than the card, a replacement card returns them to their existing scores. Superadmins bypass the check, as everywhere else. A user's judged events come back on `/users/current` as `judge_event_ids`.
 
 **Round 1 — judges.** While `judging_open` is on, that event's judges score every project 1-10 on four criteria: originality, technicality, theme, and usability (max 40). One score row per judge per project; re-scoring replaces it. Judges can't score a project they own or collaborate on. Standings are the mean judge total, ranked at `GET /judging/{event_id}/results`.
 
