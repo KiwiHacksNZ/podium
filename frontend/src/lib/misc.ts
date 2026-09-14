@@ -120,3 +120,26 @@ export function withHttpsIfMissing(url: string | null | undefined): string {
   if (URL_SCHEME_REGEX.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
 }
+
+/**
+ * Dates read as dd/mm/yy everywhere, not whatever the viewer's browser locale
+ * defaults to — a US-defaulted browser renders 03/04 as April 3rd, which is the
+ * wrong day for everyone here. The explicit numeric options pin the order, so
+ * the locale tag alone is not doing the work.
+ */
+const DATE_PARTS = { day: "2-digit", month: "2-digit", year: "2-digit" } as const;
+
+export function formatDate(value: string | Date | null | undefined): string {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString("en-NZ", DATE_PARTS);
+}
+
+export function formatDateTime(value: string | Date | null | undefined): string {
+  if (!value) return "—";
+  return new Date(value).toLocaleString("en-NZ", {
+    ...DATE_PARTS,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}

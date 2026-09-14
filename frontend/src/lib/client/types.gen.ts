@@ -112,6 +112,17 @@ export type HTTPValidationError = {
     detail?: Array<ValidationError>;
 };
 
+export type JudgeCard = {
+    code: string;
+    redeemed_at?: (string | null);
+    redeemed_by?: (string | null);
+    issued_for?: (string | null);
+};
+
+export type JudgeCardMint = {
+    count: number;
+};
+
 export type JudgeCodeRedeemed = {
     access_token: string;
     token_type: string;
@@ -751,6 +762,38 @@ export type RotateJudgeCodeEventsAdminEventIdJudgeCodePostData = {
 export type RotateJudgeCodeEventsAdminEventIdJudgeCodePostResponse = (JudgeCodeResponse);
 
 export type RotateJudgeCodeEventsAdminEventIdJudgeCodePostError = (HTTPValidationError);
+
+export type ListJudgeCardsEventsAdminEventIdJudgeCardsGetData = {
+    path: {
+        event_id: string;
+    };
+};
+
+export type ListJudgeCardsEventsAdminEventIdJudgeCardsGetResponse = (Array<JudgeCard>);
+
+export type ListJudgeCardsEventsAdminEventIdJudgeCardsGetError = (HTTPValidationError);
+
+export type MintJudgeCardsEventsAdminEventIdJudgeCardsPostData = {
+    body: JudgeCardMint;
+    path: {
+        event_id: string;
+    };
+};
+
+export type MintJudgeCardsEventsAdminEventIdJudgeCardsPostResponse = (Array<JudgeCard>);
+
+export type MintJudgeCardsEventsAdminEventIdJudgeCardsPostError = (HTTPValidationError);
+
+export type ReissueJudgeCardEventsAdminEventIdJudgesUserIdCardPostData = {
+    path: {
+        event_id: string;
+        user_id: string;
+    };
+};
+
+export type ReissueJudgeCardEventsAdminEventIdJudgesUserIdCardPostResponse = (JudgeCard);
+
+export type ReissueJudgeCardEventsAdminEventIdJudgesUserIdCardPostError = (HTTPValidationError);
 
 export type LockInFinalistsEventsAdminEventIdFinalistsPostData = {
     path: {
