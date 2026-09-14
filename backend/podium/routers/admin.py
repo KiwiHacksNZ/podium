@@ -21,6 +21,7 @@ from podium.db.postgres import (
     User,
     Event,
     EventJudgeLink,
+    JudgeCode,
     EventPrivate,
     EventUpdate,
     Project,
@@ -87,6 +88,16 @@ class JudgeEmail(BaseModel):
 
 class JudgeCodeResponse(BaseModel):
     judge_code: str
+
+
+class JudgeCardMint(BaseModel):
+    count: int
+
+
+class JudgeCard(BaseModel):
+    code: str
+    redeemed_at: datetime | None = None
+    redeemed_by: str | None = None
 
 
 class FinalistResponse(BaseModel):
@@ -287,6 +298,76 @@ async def rotate_judge_code(
     raise HTTPException(
         status_code=500, detail="Could not generate an unused judge code"
     )
+
+
+@router.get("/{event_id}/judge-cards")
+async def list_judge_cards(
+    event_id: Annotated[UUID, Path(title="Event ID")],
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[JudgeCard]:
+    """Every printed card for this event, newest last, with who used it."""
+    event = await get_owned_event(event_id, user, session)
+    cards = await scalar_all(
+        session,
+        select(JudgeCode)
+        .where(JudgeCode.event_id == event.id)
+        .order_by(JudgeCode.created_at),
+    )
+    names = {
+        u.id: u.display_name
+        for u in await scalar_all(
+            session,
+            select(User).where(
+                User.id.in_([c.redeemed_by_id for c in cards if c.redeemed_by_id])
+            ),
+        )
+    } if any(c.redeemed_by_id for c in cards) else {}
+    return [
+        JudgeCard(
+            code=c.code,
+            redeemed_at=c.redeemed_at,
+            redeemed_by=names.get(c.redeemed_by_id) if c.redeemed_by_id else None,
+        )
+        for c in cards
+    ]
+
+
+@router.post("/{event_id}/judge-cards")
+async def mint_judge_cards(
+    event_id: Annotated[UUID, Path(title="Event ID")],
+    body: JudgeCardMint,
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[JudgeCard]:
+    """Mint single-use codes to print. Each is burned by the judge who redeems it."""
+    event = await get_owned_event(event_id, user, session)
+    if not 1 <= body.count <= 100:
+        raise HTTPException(status_code=400, detail="Mint between 1 and 100 cards")
+
+    minted: list[JudgeCode] = []
+    for _ in range(body.count):
+        # Codes are globally unique so a judge only types six digits, with no
+        # event to pick first. Retry on the rare collision.
+        for _attempt in range(20):
+            code = f"{randbelow(1_000_000):06d}"
+            clash = await scalar_one_or_none(
+                session, select(JudgeCode).where(JudgeCode.code == code)
+            ) or await scalar_one_or_none(
+                session, select(Event).where(Event.judge_code == code)
+            )
+            if not clash:
+                card = JudgeCode(event_id=event.id, code=code)
+                session.add(card)
+                await session.commit()
+                minted.append(card)
+                break
+        else:
+            raise HTTPException(
+                status_code=500, detail="Could not generate unused judge codes"
+            )
+
+    return [JudgeCard(code=c.code) for c in minted]
 
 
 @router.post("/{event_id}/finalists")

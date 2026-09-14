@@ -20,7 +20,9 @@ import {
 	adminGetVotes,
 	adminLockFinalists,
 	adminAddJudge,
+	adminGetJudgeCards,
 	adminGetJudges,
+	adminMintJudgeCards,
 	adminPatchEvent,
 	adminRemoveJudge,
 	adminRotateJudgeCode,
@@ -905,6 +907,44 @@ test.describe('API coverage — JUDGING router', () => {
 			await userApi.dispose();
 			await userBase.dispose();
 		}
+	});
+
+	test('POST /events/admin/{id}/judge-cards mints single-use codes that burn on redeem', async ({
+		authedApi
+	}, testInfo) => {
+		const tag = `cards-${Date.now()}-w${testInfo.workerIndex}`;
+		const event = await createTestEvent(authedApi, { name: unique('JudgeCards', testInfo) });
+
+		const minted = await (await adminMintJudgeCards(authedApi, event.id, 2)).json();
+		expect(minted).toHaveLength(2);
+		const [first, second] = minted.map((c: { code: string }) => c.code);
+		expect(first).toMatch(/^\d{6}$/);
+		expect(first).not.toBe(second);
+
+		const anon = await apiRequest.newContext();
+		try {
+			// First judge burns the card
+			const claimed = await redeemJudgeCode(anon, first, 'Card Judge', `card+${tag}@example.com`);
+			expect(claimed.ok()).toBe(true);
+
+			// A different person cannot reuse it
+			const reused = await redeemJudgeCode(anon, first, 'Someone Else', `other+${tag}@example.com`);
+			expect(reused.status()).toBe(409);
+
+			// Nor can the original judge — the card is spent, not personal
+			const again = await redeemJudgeCode(anon, first, 'Card Judge', `card+${tag}@example.com`);
+			expect(again.status()).toBe(409);
+
+			// The spare card still works
+			expect((await redeemJudgeCode(anon, second, 'Spare Judge', `spare+${tag}@example.com`)).ok()).toBe(true);
+		} finally {
+			await anon.dispose();
+		}
+
+		const listed = await (await adminGetJudgeCards(authedApi, event.id)).json();
+		expect(listed).toHaveLength(2);
+		expect(listed.every((c: { redeemed_at: string | null }) => c.redeemed_at)).toBe(true);
+		expect(listed.find((c: { code: string }) => c.code === first).redeemed_by).toBe('Card Judge');
 	});
 });
 

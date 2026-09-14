@@ -309,6 +309,20 @@ export async function setRoundOpen(
 // SUPERADMIN
 // =============================================================================
 
+/** Mint single-use judge cards for printing. Event owner required. */
+export async function adminMintJudgeCards(
+	api: APIRequestContext,
+	eventId: string,
+	count: number
+) {
+	return api.post(`${API_URL}/events/admin/${eventId}/judge-cards`, { data: { count } });
+}
+
+/** List every printed judge card and whether it has been used. */
+export async function adminGetJudgeCards(api: APIRequestContext, eventId: string) {
+	return api.get(`${API_URL}/events/admin/${eventId}/judge-cards`);
+}
+
 /** List the judges for an event. Event owner required. */
 export async function adminGetJudges(api: APIRequestContext, eventId: string) {
 	return api.get(`${API_URL}/events/admin/${eventId}/judges`);

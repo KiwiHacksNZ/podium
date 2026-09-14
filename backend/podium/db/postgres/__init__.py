@@ -16,6 +16,7 @@ Query patterns:
 """
 
 from podium.db.postgres.base import async_session_factory, get_session, get_ro_session, engine, init_db, scalar_one_or_none, scalar_all
+from podium.db.postgres.judge_code import JudgeCode
 from podium.db.postgres.links import EventAttendeeLink, EventJudgeLink, ProjectCollaboratorLink
 from podium.db.postgres.user import User, UserPublic, UserPrivate, UserInternal, UserSignup, UserUpdate, user_to_private, default_display_name
 from podium.db.postgres.event import Event, EventPublic, EventPrivate, EventUpdate
@@ -48,6 +49,7 @@ __all__ = [
     # Link tables (many-to-many)
     "EventAttendeeLink",
     "EventJudgeLink",
+    "JudgeCode",
     "ProjectCollaboratorLink",
     # User
     "User",

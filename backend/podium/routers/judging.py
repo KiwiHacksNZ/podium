@@ -27,6 +27,7 @@ from podium.limiter import limiter
 from podium.db.postgres import (
     Event,
     EventJudgeLink,
+    JudgeCode,
     JudgeScore,
     JudgeScorePublic,
     JudgeScoreUpsert,
@@ -111,10 +112,11 @@ async def redeem_judge_code(
 ) -> JudgeCodeRedeemed:
     """Claim judge access with the 6-digit code, a name and an email — no sign-in.
 
-    Provisions a lightweight, code-only judge account keyed by (event, email) so
-    re-entering the same code and email resumes prior scoring, then returns an
-    access token the frontend uses like a normal login. The email is also kept
-    against the event so organisers can contact their judges.
+    Accepts either a printed card's single-use code, which is burned here, or the
+    event's shared judge_code, which is not. Provisions a lightweight, code-only
+    judge account keyed by (event, email), so a judge given a replacement card
+    still lands on their existing scores. The email is kept against the event so
+    organisers can contact their judges.
     """
     code = body.code.strip()
     if not (len(code) == 6 and code.isdigit()):
@@ -128,9 +130,22 @@ async def redeem_judge_code(
     if "@" not in contact_email or "." not in contact_email.split("@")[-1]:
         raise HTTPException(status_code=400, detail="Enter a valid email address")
 
-    event = await scalar_one_or_none(
-        session, select(Event).where(Event.judge_code == code)
+    # Printed cards carry single-use codes; the event's own judge_code is the
+    # shared fallback for anyone handing codes out ad hoc.
+    card = await scalar_one_or_none(
+        session, select(JudgeCode).where(JudgeCode.code == code)
     )
+    if card is not None and card.redeemed_at is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="That card has already been used — ask an organiser for another",
+        )
+
+    if card is not None:
+        lookup = select(Event).where(Event.id == card.event_id)
+    else:
+        lookup = select(Event).where(Event.judge_code == code)
+    event = await scalar_one_or_none(session, lookup)
     if not event or event.deleted_at is not None:
         raise HTTPException(status_code=404, detail="That judge code isn't valid")
 
@@ -165,6 +180,10 @@ async def redeem_judge_code(
                 event_id=event.id, user_id=judge.id, judge_email=contact_email
             )
         )
+
+    if card is not None:
+        card.redeemed_at = datetime.now(timezone.utc)
+        card.redeemed_by_id = judge.id
     await session.commit()
 
     token = create_access_token(
