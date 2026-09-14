@@ -15,11 +15,11 @@
     admin_permissions_csv: string;
   };
 
-  const phases = ["draft", "submission", "judging", "voting", "closed"];
+  const phases = ["hidden", "draft", "submission", "judging", "voting", "closed"];
   const repoValidations = ["none", "github", "git", "custom"];
   const demoValidations = ["none", "itch", "custom"];
   const phaseBadge: Record<string, string> = {
-    draft: "badge-ghost", submission: "badge-success", judging: "badge-accent", voting: "badge-warning", closed: "badge-info",
+    hidden: "badge-neutral", draft: "badge-ghost", submission: "badge-success", judging: "badge-accent", voting: "badge-warning", closed: "badge-info",
   };
 
   type Page<T> = { items: T[]; total: number; page: number; size: number; pages: number };

@@ -9,7 +9,7 @@ Judging access is per event: an organizer either adds a judge directly or hands
 out the event's 6-digit judge code, which the judge redeems here.
 """
 
-import re
+from hashlib import sha256
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID
@@ -66,6 +66,7 @@ class JudgeProjects(BaseModel):
 class RedeemJudgeCode(BaseModel):
     code: str
     name: str
+    email: str
 
 
 class JudgeCodeRedeemed(BaseModel):
@@ -108,11 +109,12 @@ async def redeem_judge_code(
     response: Response,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> JudgeCodeRedeemed:
-    """Claim judge access with the 6-digit code and a name — no sign-in needed.
+    """Claim judge access with the 6-digit code, a name and an email — no sign-in.
 
-    Provisions a lightweight, code-only judge account keyed by (event, name) so
-    re-entering the same code and name on the same device resumes prior scoring,
-    then returns an access token the frontend uses like a normal login.
+    Provisions a lightweight, code-only judge account keyed by (event, email) so
+    re-entering the same code and email resumes prior scoring, then returns an
+    access token the frontend uses like a normal login. The email is also kept
+    against the event so organisers can contact their judges.
     """
     code = body.code.strip()
     if not (len(code) == 6 and code.isdigit()):
@@ -122,15 +124,23 @@ async def redeem_judge_code(
     if not name:
         raise HTTPException(status_code=400, detail="Enter your name")
 
+    contact_email = body.email.strip().lower()
+    if "@" not in contact_email or "." not in contact_email.split("@")[-1]:
+        raise HTTPException(status_code=400, detail="Enter a valid email address")
+
     event = await scalar_one_or_none(
         session, select(Event).where(Event.judge_code == code)
     )
     if not event or event.deleted_at is not None:
         raise HTTPException(status_code=404, detail="That judge code isn't valid")
 
-    # Deterministic placeholder identity: same name + code + event resumes.
-    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "judge"
-    email = f"judge-{slug}-{event.id}@judge.invalid"[:255]
+    # Deterministic placeholder identity: the same email redeeming the same
+    # event resumes prior scoring. Deliberately NOT keyed on the address itself
+    # — a judge code must never mint a session for someone's real account, so
+    # the login identity stays inside the unroutable @judge.invalid namespace
+    # and the address they gave is kept on the link row instead.
+    digest = sha256(f"{contact_email}:{event.id}".encode()).hexdigest()[:32]
+    email = f"judge-{digest}@judge.invalid"
 
     judge = await scalar_one_or_none(
         session, select(User).where(User.email == email)
@@ -147,9 +157,15 @@ async def redeem_judge_code(
             EventJudgeLink.event_id == event.id, EventJudgeLink.user_id == judge.id
         ),
     )
-    if not already:
-        session.add(EventJudgeLink(event_id=event.id, user_id=judge.id))
-        await session.commit()
+    if already:
+        already.judge_email = contact_email
+    else:
+        session.add(
+            EventJudgeLink(
+                event_id=event.id, user_id=judge.id, judge_email=contact_email
+            )
+        )
+    await session.commit()
 
     token = create_access_token(
         data={"sub": email},

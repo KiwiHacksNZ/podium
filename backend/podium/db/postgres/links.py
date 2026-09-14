@@ -44,6 +44,10 @@ class EventJudgeLink(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     event_id: UUID = Field(foreign_key="events.id")
     user_id: UUID = Field(foreign_key="users.id")
+    # Contact address a code-only judge gave when redeeming. Their user row is a
+    # placeholder in the @judge.invalid namespace, so this is the only way an
+    # organiser can reach them. Null for judges added from an existing account.
+    judge_email: str | None = Field(default=None, max_length=255)
 
 
 class ProjectCollaboratorLink(SQLModel, table=True):

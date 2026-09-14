@@ -887,6 +887,15 @@ test.describe('API coverage — JUDGING router', () => {
 				await judgeApi.dispose();
 			}
 
+			// The address the judge typed is kept for the organiser, while their
+			// login identity stays in the unroutable placeholder namespace.
+			const judgeList = await (await adminGetJudges(authedApi, event.id)).json();
+			const codeJudge = judgeList.find(
+				(j: { judge_email?: string }) => j.judge_email === 'code.judge@example.com'
+			);
+			expect(codeJudge).toBeDefined();
+			expect(codeJudge.email).toMatch(/@judge\.invalid$/);
+
 			// Rotating invalidates the old code
 			const second = await adminRotateJudgeCode(authedApi, event.id);
 			expect(second.ok()).toBe(true);

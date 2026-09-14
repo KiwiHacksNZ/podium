@@ -332,8 +332,13 @@ export async function adminRotateJudgeCode(api: APIRequestContext, eventId: stri
 }
 
 /** Claim judge access with a 6-digit judge code. */
-export async function redeemJudgeCode(api: APIRequestContext, code: string, name = 'Code Judge') {
-	return api.post(`${API_URL}/judging/redeem`, { data: { code, name } });
+export async function redeemJudgeCode(
+	api: APIRequestContext,
+	code: string,
+	name = 'Code Judge',
+	email = 'code.judge@example.com'
+) {
+	return api.post(`${API_URL}/judging/redeem`, { data: { code, name, email } });
 }
 
 /** Grant/revoke is_admin / is_superadmin. Superadmin actor required. */

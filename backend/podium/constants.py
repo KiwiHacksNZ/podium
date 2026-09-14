@@ -17,13 +17,15 @@ BAD_ACCESS = HTTPException(
 class EventPhase(str, Enum):
     """Lifecycle phases for an event, in order.
 
-    DRAFT      - not yet visible or accepting submissions
+    HIDDEN     - kept out of the public event list; reachable only by direct link
+    DRAFT      - not yet accepting submissions
     SUBMISSION - open for project submissions
     JUDGING    - submissions closed, judges score every project
     VOTING     - finalists locked in, attendees rank them 1st/2nd/3rd
     CLOSED     - voting closed, results visible
     """
 
+    HIDDEN = "hidden"
     DRAFT = "draft"
     SUBMISSION = "submission"
     JUDGING = "judging"

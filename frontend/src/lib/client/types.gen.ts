@@ -272,6 +272,7 @@ export type ProjectUpdate = {
 export type RedeemJudgeCode = {
     code: string;
     name: string;
+    email: string;
 };
 
 export type ReferralResponse = {
@@ -323,6 +324,7 @@ export type UserAttendee = {
     display_name: string;
     first_name: string;
     last_name: string;
+    judge_email?: (string | null);
 };
 
 export type UserEvents = {

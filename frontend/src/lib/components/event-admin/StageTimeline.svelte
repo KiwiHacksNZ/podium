@@ -23,7 +23,12 @@
   // The stage is a label plus visibility/leaderboard control — the judging and
   // voting rounds are opened with the switches below (RoundSwitches.svelte).
   const stages = [
-    { id: "draft", label: "Draft", description: "Hidden — not yet accepting submissions" },
+    {
+      id: "hidden",
+      label: "Hidden",
+      description: "Kept off the public event list. Direct links still work.",
+    },
+    { id: "draft", label: "Draft", description: "Not yet accepting submissions" },
     { id: "submission", label: "Submission", description: "Open for project submissions" },
     {
       id: "judging",

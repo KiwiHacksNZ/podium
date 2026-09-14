@@ -119,6 +119,11 @@ test.describe('Judging round', () => {
 			});
 
 			await judgePage.reload();
+			// Every project is scored now, so the thank-you replaces the grading UI
+			await expect(judgePage.getByRole('heading', { name: 'Thanks!' })).toBeVisible({
+				timeout: 15000
+			});
+			await judgePage.getByRole('button', { name: 'Review my grades' }).click();
 			for (const [criterion, value] of scores) {
 				await expect(
 					judgePage.getByRole('radio', { name: `${value} out of 10 for ${criterion}` })
@@ -281,7 +286,7 @@ test.describe('Ranked ballot', () => {
 
 			await attendeePage.goto(`/events/${event.slug}/rank`);
 			await expect(
-				attendeePage.getByText('These are the 5 finalists chosen by the judges')
+				attendeePage.getByRole('heading', { name: 'Rank the 5 finalists' })
 			).toBeVisible({ timeout: 15000 });
 
 			// The unjudged project never became a finalist, so it is off the ballot
@@ -293,24 +298,24 @@ test.describe('Ranked ballot', () => {
 				await attendeePage.getByRole('button', { name: new RegExp(project.name) }).click();
 			}
 
-			const ballot = attendeePage.locator('.card').filter({ hasText: 'Your ballot' });
+			const ballot = attendeePage.locator('section').filter({ hasText: 'Your ballot' });
 			const ballotItems = ballot.locator('li');
 			await expect(ballotItems).toHaveCount(3);
-			await expect(ballotItems.nth(0)).toContainText('1st choice');
+			await expect(ballotItems.nth(0)).toContainText('1st');
 			await expect(ballotItems.nth(0)).toContainText(picks[0].name);
-			await expect(ballotItems.nth(0)).toContainText('3 points');
-			await expect(ballotItems.nth(1)).toContainText('2nd choice');
+			await expect(ballotItems.nth(0)).toContainText('3 pts');
+			await expect(ballotItems.nth(1)).toContainText('2nd');
 			await expect(ballotItems.nth(1)).toContainText(picks[1].name);
-			await expect(ballotItems.nth(1)).toContainText('2 points');
-			await expect(ballotItems.nth(2)).toContainText('3rd choice');
+			await expect(ballotItems.nth(1)).toContainText('2 pts');
+			await expect(ballotItems.nth(2)).toContainText('3rd');
 			await expect(ballotItems.nth(2)).toContainText(picks[2].name);
-			await expect(ballotItems.nth(2)).toContainText('1 point');
+			await expect(ballotItems.nth(2)).toContainText('1 pt');
 
 			const voted = attendeePage.waitForResponse(
 				(r) => r.url().includes('/events/vote') && r.request().method() === 'POST' && r.ok(),
 				{ timeout: 15000 }
 			);
-			await attendeePage.getByRole('button', { name: 'Submit Vote' }).click();
+			await attendeePage.getByRole('button', { name: 'Submit vote' }).click();
 			await voted;
 			await expect(attendeePage.getByText('Vote submitted successfully')).toBeVisible({
 				timeout: 10000
