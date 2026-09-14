@@ -3,7 +3,7 @@
   import type { PageData } from "./$types";
   import { EventsService } from "$lib/client/sdk.gen";
   import type { EventPublic } from "$lib/client";
-  import { getAuthenticatedUser } from "$lib/user.svelte";
+  import { getAuthenticatedUser, isAuthenticated } from "$lib/user.svelte";
   import OfficialEventsDisplay from "$lib/components/OfficialEventsDisplay.svelte";
 
   let { data }: { data: PageData } = $props();
@@ -40,7 +40,7 @@
 </script>
 
 <div class="max-w-6xl mx-auto space-y-8">
-  {#if getAuthenticatedUser().access_token && data.events.attending_events.length > 0}
+  {#if isAuthenticated() && data.events.attending_events.length > 0}
     <!-- Authenticated: show the events the user is attending -->
     <div class="card bg-base-100 shadow-lg">
       <div class="card-body">
@@ -90,7 +90,7 @@
     <!-- No attending events (unauthenticated or hasn't joined one) -->
     <div class="text-center py-4">
       <h1 class="text-3xl font-bold text-base-content mb-2">Events</h1>
-      {#if !getAuthenticatedUser().access_token}
+      {#if !isAuthenticated()}
         <p class="text-base-content/70">
           <a href="/login" class="link link-primary">Sign in</a> to join an event
           and submit your project.

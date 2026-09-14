@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { EventsService, ProjectsService } from "$lib/client/sdk.gen";
   import type { ProjectPrivate, EventPublic } from "$lib/client";
-  import { getAuthenticatedUser } from "$lib/user.svelte";
+  import { getAuthenticatedUser, isAuthenticated } from "$lib/user.svelte";
   import EventSelector from "$lib/components/EventSelector.svelte";
   import ProjectSubmissionWizard from "$lib/components/ProjectSubmissionWizard.svelte";
   import OfficialEventsDisplay from "$lib/components/OfficialEventsDisplay.svelte";
@@ -27,8 +27,6 @@
   });
 
   onMount(async () => {
-    const user = getAuthenticatedUser();
-
     // Always load official events — the home page is the event browser
     const officialRes = await EventsService.listOfficialEventsEventsOfficialGet({
       throwOnError: false,
@@ -37,7 +35,7 @@
       officialEvents = officialRes.data as EventPublic[];
     }
 
-    if (user.access_token) {
+    if (isAuthenticated()) {
       try {
         const [attendingRes, projectsRes] = await Promise.all([
           EventsService.getAttendingEventsEventsGet({ throwOnError: false }),
@@ -65,7 +63,7 @@
   }
 </script>
 
-{#if !getAuthenticatedUser().access_token}
+{#if !isAuthenticated()}
   <!-- Unauthenticated: event-first landing — no login wall -->
   <div class="max-w-6xl mx-auto space-y-8">
     <!-- Hero -->

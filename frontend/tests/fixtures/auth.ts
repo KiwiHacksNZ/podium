@@ -65,10 +65,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 			}
 
 			// Get magic link token and exchange for access token
-			const { signMagicLinkToken } = await import('../helpers/jwt');
-			const magicToken = signMagicLinkToken(userEmail, 30);
-			
-			const verifyResp = await api.get(`/verify?token=${magicToken}`);
+			const { getMagicLinkToken } = await import('../helpers/users');
+			const magicToken = await getMagicLinkToken(api, userEmail);
+
+			const verifyResp = await api.get(`/verify?token=${encodeURIComponent(magicToken)}`);
 			if (!verifyResp.ok()) {
 				throw new Error(`Failed to get access token: ${verifyResp.status()}`);
 			}
@@ -79,20 +79,13 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		{ scope: 'worker' }
 	],
 
-	// Authenticated browser context with token in localStorage
+	// Authenticated browser context carrying the session cookie
 	authedContext: async ({ browser, token }, use, testInfo) => {
 		const baseURL = String(testInfo.project.use.baseURL || 'http://127.0.0.1:4174');
+		const { authedStorageState } = await import('../helpers/users');
 		const context = await browser.newContext({
 			baseURL,
-			storageState: {
-				cookies: [],
-				origins: [
-					{
-						origin: baseURL,
-						localStorage: [{ name: 'token', value: token }]
-					}
-				]
-			}
+			storageState: authedStorageState(token, baseURL)
 		});
 		await use(context);
 		await context.close();
@@ -108,8 +101,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 			(res) => res.url().includes('/users/current') && res.request().method() === 'GET' && res.ok(),
 			{ timeout: 30000 }
 		).catch(() => {
-			// If validation doesn't complete, continue anyway - token is in localStorage
-			console.log('Auth validation timeout, continuing with localStorage token');
+			// If validation doesn't complete, continue anyway - the session cookie is set
+			console.log('Auth validation timeout, continuing with session cookie');
 		});
 		
 		// Store token for test access

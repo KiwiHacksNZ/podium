@@ -1,8 +1,23 @@
 import { request as apiRequest } from '@playwright/test';
 import type { APIRequestContext } from '@playwright/test';
-import { signMagicLinkToken } from './jwt';
-
 const API_BASE_URL = process.env.PUBLIC_API_URL || 'http://127.0.0.1:8000';
+
+/**
+ * Ask the backend for a real single-use magic-link token. Magic links are
+ * DB-backed, so tests can't mint their own — this uses the test-only endpoint
+ * (POST /auth/test/magic-link, gated on enable_test_endpoints).
+ */
+export async function getMagicLinkToken(api: APIRequestContext, email: string): Promise<string> {
+	const resp = await api.post('/auth/test/magic-link', {
+		headers: { 'Content-Type': 'application/json' },
+		data: { email }
+	});
+	if (!resp.ok()) {
+		throw new Error(`Failed to issue magic link for ${email}: ${resp.status()}`);
+	}
+	const { token } = await resp.json();
+	return token;
+}
 
 const DEFAULT_ADDRESS = {
 	phone: '5551234567',
@@ -14,6 +29,30 @@ const DEFAULT_ADDRESS = {
 	country: 'US',
 	dob: '2000-01-01'
 };
+
+/**
+ * Browser storage state for a signed-in page. The app authenticates browser
+ * sessions with the HttpOnly cookie the backend sets on /verify, so seeding a
+ * localStorage token does nothing. Cookies ignore ports, so one host entry
+ * covers both the dev server and the API.
+ */
+export function authedStorageState(token: string, baseURL: string) {
+	return {
+		cookies: [
+			{
+				name: 'podium_access_token',
+				value: token,
+				domain: new URL(baseURL).hostname,
+				path: '/',
+				expires: -1,
+				httpOnly: true,
+				secure: false,
+				sameSite: 'Lax' as const
+			}
+		],
+		origins: []
+	};
+}
 
 /**
  * Create a user via the public signup endpoint and exchange a signed magic-link
@@ -50,7 +89,7 @@ export async function createUserAndGetToken(
 		);
 	}
 
-	const magicToken = signMagicLinkToken(email, 30);
+	const magicToken = await getMagicLinkToken(api, email);
 	const verifyResp = await api.get(`/verify?token=${encodeURIComponent(magicToken)}`);
 	if (!verifyResp.ok()) {
 		throw new Error(`Failed to verify token for ${email}: ${verifyResp.status()}`);

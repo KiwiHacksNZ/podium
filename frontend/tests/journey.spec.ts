@@ -8,7 +8,7 @@
  */
 
 import { test, expect, request as apiRequest } from '@playwright/test';
-import { signMagicLinkToken } from './helpers/jwt';
+import { authedStorageState, getMagicLinkToken } from './helpers/users';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
@@ -42,8 +42,8 @@ async function createUserAndGetToken(
 		throw new Error(`Failed to create user: ${createResp.status()}`);
 	}
 
-	const magicToken = signMagicLinkToken(email, 30);
-	const verifyResp = await api.get(`/verify?token=${magicToken}`);
+	const magicToken = await getMagicLinkToken(api, email);
+	const verifyResp = await api.get(`/verify?token=${encodeURIComponent(magicToken)}`);
 	if (!verifyResp.ok()) {
 		throw new Error(`Failed to get access token: ${verifyResp.status()}`);
 	}
@@ -59,15 +59,7 @@ async function createAuthenticatedPage(
 ): Promise<import('@playwright/test').Page> {
 	const context = await browser.newContext({
 		baseURL,
-		storageState: {
-			cookies: [],
-			origins: [
-				{
-					origin: baseURL,
-					localStorage: [{ name: 'token', value: token }]
-				}
-			]
-		}
+		storageState: authedStorageState(token, baseURL)
 	});
 	const page = await context.newPage();
 	await page.goto('/');

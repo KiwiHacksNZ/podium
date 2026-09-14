@@ -12,7 +12,6 @@ from sqlalchemy.orm import selectinload
 
 from podium.config import settings
 from podium.routers.auth import get_current_user
-from podium.authz import require_platform_admin
 from podium.db.postgres import (
     User,
     Event,
@@ -375,121 +374,43 @@ async def create_test_event(
 
 @router.post("/test/cleanup")
 async def cleanup_test_data(
-    _: Annotated[User, Depends(require_platform_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    """Delete all test data created by e2e tests. Only available when enable_test_endpoints is true."""
+    """Delete all test data created by e2e tests. Only available when enable_test_endpoints is true.
+
+    Unauthenticated on purpose: the e2e teardown has no way to mint an admin, and
+    production refuses to boot with enable_test_endpoints set, so this route only
+    ever exists in dev and CI."""
     if not getattr(settings, "enable_test_endpoints", False):
         raise HTTPException(status_code=404, detail="Not found")
 
     from sqlalchemy import text
 
-    # Delete test users (pattern: test+pw*@example.com, organizer+*@test.local, attendee+*@test.local)
-    await session.execute(
-        text("""
-            DELETE FROM vote_audit_logs
-            WHERE voter_id IN (
-                SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
-                OR email LIKE 'organizer+%@test.local'
-                OR email LIKE 'attendee+%@test.local'
-                OR email LIKE 'admin+%@test.local'
-            )
-            OR actor_id IN (
-                SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
-                OR email LIKE 'organizer+%@test.local'
-                OR email LIKE 'attendee+%@test.local'
-                OR email LIKE 'admin+%@test.local'
-            )
-            OR project_id IN (
-                SELECT id FROM projects WHERE owner_id IN (
-                    SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
-                    OR email LIKE 'organizer+%@test.local'
-                    OR email LIKE 'attendee+%@test.local'
-                    OR email LIKE 'admin+%@test.local'
-                )
-            )
-        """)
-    )
-    await session.execute(
-        text("""
-            DELETE FROM votes WHERE voter_id IN (
-                SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
-                OR email LIKE 'organizer+%@test.local'
-                OR email LIKE 'attendee+%@test.local'
-                OR email LIKE 'admin+%@test.local'
-            )
-        """)
-    )
-    await session.execute(
-        text("""
-            DELETE FROM votes WHERE project_id IN (
-                SELECT id FROM projects WHERE owner_id IN (
-                    SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
-                    OR email LIKE 'organizer+%@test.local'
-                    OR email LIKE 'attendee+%@test.local'
-                    OR email LIKE 'admin+%@test.local'
-                )
-            )
-        """)
-    )
-    await session.execute(
-        text("""
-            DELETE FROM project_collaborators WHERE user_id IN (
-                SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
-                OR email LIKE 'organizer+%@test.local'
-                OR email LIKE 'attendee+%@test.local'
-                OR email LIKE 'admin+%@test.local'
-            )
-        """)
-    )
-    await session.execute(
-        text("""
-            DELETE FROM projects WHERE owner_id IN (
-                SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
-                OR email LIKE 'organizer+%@test.local'
-                OR email LIKE 'attendee+%@test.local'
-                OR email LIKE 'admin+%@test.local'
-            )
-        """)
-    )
-    await session.execute(
-        text("""
-            DELETE FROM event_attendees WHERE user_id IN (
-                SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
-                OR email LIKE 'organizer+%@test.local'
-                OR email LIKE 'attendee+%@test.local'
-                OR email LIKE 'admin+%@test.local'
-            )
-        """)
-    )
-    await session.execute(
-        text("""
-            DELETE FROM events WHERE owner_id IN (
-                SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
-                OR email LIKE 'organizer+%@test.local'
-                OR email LIKE 'attendee+%@test.local'
-                OR email LIKE 'admin+%@test.local'
-            )
-        """)
-    )
-    await session.execute(
-        text("""
-            DELETE FROM referrals WHERE user_id IN (
-                SELECT id FROM users WHERE email LIKE 'test+pw%@example.com'
-                OR email LIKE 'organizer+%@test.local'
-                OR email LIKE 'attendee+%@test.local'
-                OR email LIKE 'admin+%@test.local'
-            )
-        """)
-    )
-    await session.execute(
-        text("""
-            DELETE FROM users WHERE email LIKE 'test+pw%@example.com'
-            OR email LIKE 'organizer+%@test.local'
-            OR email LIKE 'attendee+%@test.local'
-            OR email LIKE 'admin+%@test.local'
-        """)
-    )
+    emails = """
+        email LIKE 'test+pw%@example.com'
+        OR email LIKE 'organizer+%@test.local'
+        OR email LIKE 'attendee+%@test.local'
+        OR email LIKE 'admin+%@test.local'
+        OR email LIKE 'judge-%@judge.invalid'
+    """
+    users = f"SELECT id FROM users WHERE {emails}"
+    projects = f"SELECT id FROM projects WHERE owner_id IN ({users})"
+    events = f"SELECT id FROM events WHERE owner_id IN ({users})"
+
+    # Ordered so every referencing row is gone before its target.
+    for statement in (
+        f"DELETE FROM vote_audit_logs WHERE voter_id IN ({users}) OR actor_id IN ({users}) OR project_id IN ({projects})",
+        f"DELETE FROM votes WHERE voter_id IN ({users}) OR project_id IN ({projects})",
+        f"DELETE FROM judge_scores WHERE judge_id IN ({users}) OR project_id IN ({projects}) OR event_id IN ({events})",
+        f"DELETE FROM event_judges WHERE user_id IN ({users}) OR event_id IN ({events})",
+        f"DELETE FROM project_collaborators WHERE user_id IN ({users}) OR project_id IN ({projects})",
+        f"DELETE FROM projects WHERE owner_id IN ({users})",
+        f"DELETE FROM event_attendees WHERE user_id IN ({users}) OR event_id IN ({events})",
+        f"DELETE FROM events WHERE owner_id IN ({users})",
+        f"DELETE FROM referrals WHERE user_id IN ({users})",
+        f"DELETE FROM users WHERE {emails}",
+    ):
+        await session.execute(text(statement))
 
     await session.commit()
     return {"message": "Test data cleaned up"}

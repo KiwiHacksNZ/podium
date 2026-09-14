@@ -3,10 +3,11 @@ Database connection and session management for SQLModel.
 
 Two engines are provided:
   - engine / get_session()    — read-write (always uses database_url)
-  - ro_engine / get_ro_session() — read-only (uses database_url_ro in prod,
-                                   falls back to database_url in dev)
+  - ro_engine / get_ro_session() — read-only (uses database_url_ro when that
+                                   points at separate infrastructure)
 
-In development (database_url_ro not set), both point to the same instance.
+When database_url_ro is unset or equal to database_url, both names refer to the
+same engine, so there is only one connection pool.
 """
 
 from collections.abc import AsyncGenerator, Sequence
@@ -22,7 +23,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from podium.config import settings
 
 DATABASE_URL = settings.get("database_url", "")
-DATABASE_URL_RO = settings.get("database_url_ro", "") or DATABASE_URL  # fall back to rw in dev
+DATABASE_URL_RO = settings.get("database_url_ro", "")
 
 
 def _build_async_engine(url: str):
@@ -58,7 +59,14 @@ def _build_async_engine(url: str):
 engine = _build_async_engine(DATABASE_URL) if DATABASE_URL else None
 
 # Read-only engine — use for public read endpoints (leaderboard, project listing, etc.)
-ro_engine = _build_async_engine(DATABASE_URL_RO) if DATABASE_URL_RO else engine
+# A second engine means a second connection pool against the same Postgres.
+# Only pay for that when reads genuinely go elsewhere; otherwise share the
+# read-write engine, or a 4-worker deploy asks for twice the connections it needs.
+ro_engine = (
+    _build_async_engine(DATABASE_URL_RO)
+    if DATABASE_URL_RO and DATABASE_URL_RO != DATABASE_URL
+    else engine
+)
 
 async_session_factory = (
     async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -90,7 +98,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def get_ro_session() -> AsyncGenerator[AsyncSession, None]:
     """Dependency: read-only database session. Use for public read endpoints.
-    In dev (no database_url_ro set), this is the same as get_session()."""
+    Without a distinct database_url_ro, this is the same as get_session()."""
     factory = ro_session_factory or async_session_factory
     if not factory:
         raise RuntimeError("Database not configured. Set PODIUM_DATABASE_URL.")

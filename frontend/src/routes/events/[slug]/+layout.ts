@@ -5,7 +5,7 @@ import { client } from "$lib/client/sdk.gen";
 import { EventsService } from "$lib/client/sdk.gen";
 import type { EventPublic, EventPrivate } from "$lib/client";
 import { eventSlugAliases } from "$lib/consts";
-import { getAuthenticatedUser } from "$lib/user.svelte";
+import { isAuthenticated } from "$lib/user.svelte";
 
 export const load: LayoutLoad = async ({ params, fetch, parent, url }) => {
   client.setConfig({ fetch });
@@ -50,8 +50,7 @@ export const load: LayoutLoad = async ({ params, fetch, parent, url }) => {
   }
 
   // Try to get admin view (will succeed if user is owner)
-  const currentUser = getAuthenticatedUser();
-  if (currentUser.access_token) {
+  if (isAuthenticated()) {
     const {
       data: privateEvent,
       error: adminErr,

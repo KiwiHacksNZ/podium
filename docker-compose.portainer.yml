@@ -6,6 +6,9 @@ services:
   podium-pg:
     image: postgres:17
     restart: unless-stopped
+    # The backend caps itself at 15 connections per uvicorn worker (60 at 4
+    # workers); the rest is headroom for migrations, psql and monitoring.
+    command: postgres -c max_connections=200
     environment:
       TZ: Pacific/Auckland
       POSTGRES_DB: podium
@@ -19,17 +22,36 @@ services:
       timeout: 5s
       retries: 5
 
+  # Caches the leaderboard for 30s. Purely derived data, so no persistence and
+  # eviction on memory pressure is fine — a cold cache just re-queries Postgres.
+  podium-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
   podium-backend:
     build: ./backend
     restart: unless-stopped
     volumes:
       - /opt/kiwihacks-podium/stack.env:/run/secrets/stack.env:ro
       - /opt/kiwihacks-podium/uploads:/app/uploads
-    # env is exported line-by-line from the mounted file.
+    environment:
+      # Defaults for non-secret settings. stack.env still wins where it sets a
+      # value, so anything here can be overridden on the host.
+      PODIUM_REDIS_URL: redis://podium-redis:6379/0
+    # env is exported line-by-line from the mounted file. Blank values are
+    # skipped so an empty `KEY=` in stack.env does not clobber a default above;
+    # only the part before the first `=` is treated as the name, so values
+    # containing `=` (base64 padding) survive intact.
     entrypoint:
       - /bin/bash
       - -c
-      - 'while IFS= read -r l; do [ -n "$$l" ] && export "$$l"; done < /run/secrets/stack.env; exec "$$@"'
+      - 'while IFS= read -r l; do case "$$l" in ""|\#*) continue;; esac; [ -n "$${l#*=}" ] && export "$$l"; done < /run/secrets/stack.env; exec "$$@"'
       - --
     command:
       - /bin/bash
@@ -39,6 +61,7 @@ services:
       - "127.0.0.1:8001:8000"
     depends_on:
       podium-pg: { condition: service_healthy }
+      podium-redis: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health/ready >/dev/null || exit 1"]
       interval: 30s
