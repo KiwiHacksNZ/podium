@@ -16,12 +16,12 @@
     return ordinals[index] ?? `${index + 1}th`;
   }
 
-  // Same palette language as the judging screen: gold for the top pick, then
-  // sky and rose. Anything past 3rd falls back to a neutral chip.
+  // Theme tokens so the ballot re-skins with the rest of the app: the top pick
+  // is the loudest colour available, then info, then primary.
   const rankStyles = [
-    "bg-amber-400 text-amber-950",
-    "bg-sky-600 text-white",
-    "bg-rose-600 text-white",
+    "bg-warning text-warning-content",
+    "bg-info text-info-content",
+    "bg-primary text-primary-content",
   ];
   function rankStyle(index: number) {
     return rankStyles[index] ?? "bg-base-300 text-base-content";
@@ -77,23 +77,23 @@
 <!-- Basic information about voting -->
 {#if data.alreadyVoted}
   <div class="container mx-auto max-w-3xl p-4 sm:p-6">
-    <section class="rounded-box bg-emerald-600 text-white p-8 text-center">
+    <section class="rounded-box bg-success text-success-content p-8 text-center">
       <span
-        class="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-sm font-extrabold uppercase tracking-wide text-emerald-700"
+        class="inline-flex items-center rounded-full bg-success-content text-success px-3 py-1 text-sm font-extrabold uppercase tracking-wide"
       >
         Vote counted
       </span>
       <h1 class="mt-4 text-3xl sm:text-4xl font-extrabold">Thanks!</h1>
-      <p class="mt-3 text-emerald-50/90">
+      <p class="mt-3 opacity-90">
         Your ballot is in. Everyone gets one vote, so that is you done.
       </p>
     </section>
   </div>
 {:else}
   <div class="container mx-auto max-w-5xl p-4 sm:p-6 flex flex-col gap-6">
-    <section class="rounded-box bg-sky-600 text-white p-5 sm:p-6">
+    <section class="rounded-box bg-info text-info-content p-5 sm:p-6">
       <span
-        class="inline-flex items-center rounded-full bg-sky-50 px-3 py-1 text-sm font-extrabold uppercase tracking-wide text-sky-700"
+        class="inline-flex items-center rounded-full bg-info-content text-info px-3 py-1 text-sm font-extrabold uppercase tracking-wide"
       >
         How to vote
       </span>
@@ -104,7 +104,7 @@
           Rank your favourites
         {/if}
       </h1>
-      <p class="mt-2 text-sky-50/90 text-sm">
+      <p class="mt-2 opacity-90 text-sm">
         Tap projects in the order you like them, favourite first. 1st choice is
         worth 3 points, 2nd is 2, 3rd is 1. Tap a pick again to remove it and
         reorder.

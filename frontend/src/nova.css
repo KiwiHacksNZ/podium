@@ -1,5 +1,5 @@
 /* Nova theme layer.
-   Matches nova.kiwihacks.com visual language: deep space blue, bright pink accents, glassmorphism. */
+   Matches nova.kiwihacks.org visual language: deep space blue, bright pink accents, glassmorphism. */
 
 [data-theme="nova"] {
   --nv-ink: #ffffff;
@@ -10,8 +10,8 @@
   --nv-accent: #ff5ea0;
   --nv-accent-soft: rgba(255, 94, 160, 0.2);
   --nv-accent-bright: #ff7ab3;
-  --nv-bg: #161a3d;
-  --nv-bg-alt: #0c1030;
+  --nv-bg: #0a0d28;
+  --nv-bg-alt: #05071a;
   --nv-paper: rgba(255, 255, 255, 0.05);
   --nv-border: 1px solid rgba(255, 255, 255, 0.1);
   --nv-radius: 16px;
@@ -20,12 +20,24 @@
 [data-theme="nova"] html,
 [data-theme="nova"] body {
   min-height: 100vh;
-  font-family: "Figtree", "Phantom Sans", sans-serif;
+  font-family: "Jua", Arial, Helvetica, sans-serif;
   color: var(--nv-ink);
 }
 
-[data-theme="nova"] body {
+[data-theme="nova"] html {
   background: var(--nv-bg);
+}
+
+/* nova.kiwihacks.org fades to a darker floor rather than sitting on one flat
+   colour, and pins it so the gradient does not scroll away on a long page. */
+[data-theme="nova"] body {
+  background: linear-gradient(
+    180deg,
+    var(--nv-bg) 0%,
+    var(--nv-bg) 55%,
+    var(--nv-bg-alt) 100%
+  );
+  background-attachment: fixed;
   position: relative;
 }
 

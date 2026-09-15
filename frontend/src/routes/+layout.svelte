@@ -10,7 +10,12 @@
   import { env } from "$env/dynamic/public";
   import MaintenanceMode from "$lib/components/MaintenanceMode.svelte";
 
-  import { getAuthenticatedUser, isAuthenticated, signOut } from "$lib/user.svelte";
+  import {
+    getAuthenticatedUser,
+    isAuthenticated,
+    isCodeOnlyJudge,
+    signOut,
+  } from "$lib/user.svelte";
   import NoticeAndHelp from "$lib/components/NoticeAndHelp.svelte";
   import UpdateUser from "$lib/components/UpdateUser.svelte";
   import AirtableHitsCounter from "$lib/components/AirtableHitsCounter.svelte";
@@ -68,13 +73,20 @@
   };
 
   // Navigation options
-  const navOptions = $derived.by(() => {
+  type NavItem = { label: string; icon: string };
+  const navOptions: Record<string, NavItem> = $derived.by(() => {
+    const currentUser = getAuthenticatedUser().user;
+
+    // A code-only judge signed in with a card, not an account. They have no
+    // projects and attend no events, so Home/Projects/Events are all dead ends
+    // for them — they are here to score one event and nothing else.
+    if (isCodeOnlyJudge(currentUser)) return {};
+
     const base = {
       "/": { label: "Home", icon: "home" },
       "/projects": { label: "Projects", icon: "projects" },
       "/events": { label: "Events", icon: "events" },
     };
-    const currentUser = getAuthenticatedUser().user;
     if (currentUser.is_superadmin) {
       return {
         ...base,
@@ -337,7 +349,7 @@
       <div class="navbar-end gap-2">
         <a href="/events" class="btn btn-ghost btn-sm">Events</a>
         <a
-          href="https://nova.kiwihacks.com"
+          href="https://nova.kiwihacks.org"
           target="_blank"
           rel="noreferrer"
           class="btn btn-secondary btn-sm"

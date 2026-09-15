@@ -23,6 +23,11 @@
   type Criterion = "originality" | "technicality" | "theme" | "usability";
   type Draft = Record<Criterion, number | null>;
 
+  // Theme tokens, not raw palette colours: the criteria have to re-skin with the
+  // rest of the app when a series changes theme (see docs/new-series-and-theming).
+  // primary/warning/info/neutral is the one set that stays visually distinct
+  // under both themes — success duplicates primary on kiwihacks, and accent
+  // duplicates warning on nova.
   const criteria: {
     key: Criterion;
     name: string;
@@ -36,38 +41,38 @@
       key: "originality",
       name: "Originality",
       question: "How distinct is the project from common projects?",
-      card: "bg-rose-600 text-white",
-      pill: "bg-rose-50 text-rose-700",
-      inset: "bg-black/15 text-white",
-      helper: "text-rose-50/90",
+      card: "bg-primary text-primary-content",
+      pill: "bg-primary-content text-primary",
+      inset: "bg-black/15",
+      helper: "opacity-80",
     },
     {
       key: "technicality",
       name: "Technicality",
       question:
         "How much effort did the builder put into the implementation?",
-      card: "bg-amber-400 text-amber-950",
-      pill: "bg-amber-950 text-amber-50",
-      inset: "bg-amber-900/15 text-amber-950",
-      helper: "text-amber-950/80",
+      card: "bg-warning text-warning-content",
+      pill: "bg-warning-content text-warning",
+      inset: "bg-black/10",
+      helper: "opacity-80",
     },
     {
       key: "theme",
       name: "Theme",
       question: "How well does the project fit the event theme?",
-      card: "bg-emerald-600 text-white",
-      pill: "bg-emerald-50 text-emerald-700",
-      inset: "bg-black/15 text-white",
-      helper: "text-emerald-50/90",
+      card: "bg-info text-info-content",
+      pill: "bg-info-content text-info",
+      inset: "bg-black/15",
+      helper: "opacity-80",
     },
     {
       key: "usability",
       name: "Usability",
       question: "Did you like using it? Could you use it at all?",
-      card: "bg-sky-600 text-white",
-      pill: "bg-sky-50 text-sky-700",
-      inset: "bg-black/15 text-white",
-      helper: "text-sky-50/90",
+      card: "bg-neutral text-neutral-content",
+      pill: "bg-neutral-content text-neutral",
+      inset: "bg-black/15",
+      helper: "opacity-80",
     },
   ];
 
@@ -186,20 +191,20 @@
   </div>
 {:else if allScored && !reviewing}
   <div class="container mx-auto max-w-3xl p-4 sm:p-6">
-    <section class="rounded-box bg-emerald-600 text-white p-8 text-center">
+    <section class="rounded-box bg-success text-success-content p-8 text-center">
       <span
-        class="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-sm font-extrabold uppercase tracking-wide text-emerald-700"
+        class="inline-flex items-center rounded-full bg-success-content text-success px-3 py-1 text-sm font-extrabold uppercase tracking-wide"
       >
         All done
       </span>
       <h1 class="mt-4 text-3xl sm:text-4xl font-extrabold">Thanks!</h1>
-      <p class="mt-3 text-emerald-50/90">
+      <p class="mt-3 opacity-90">
         You have graded all {projects.length}
         {projects.length === 1 ? "project" : "projects"} for {data.event.name}.
         Your scores are saved — nothing else to do.
       </p>
       <button
-        class="btn btn-sm mt-6 bg-emerald-50 text-emerald-700 border-none hover:bg-white"
+        class="btn btn-sm mt-6 bg-success-content text-success border-none"
         onclick={() => (reviewing = true)}
       >
         Review my grades
