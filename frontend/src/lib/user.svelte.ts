@@ -41,6 +41,18 @@ export function isAuthenticated(): boolean {
   return Boolean(user.user.id);
 }
 
+/**
+ * True for a judge who signed in with a printed code rather than an account.
+ * Their identity lives in the unroutable @judge.invalid namespace (see
+ * redeem_judge_code), which is the only marker distinguishing them from a real
+ * user who happens to be judging.
+ */
+export function isCodeOnlyJudge(
+  candidate: { email?: string } = user.user,
+): boolean {
+  return Boolean(candidate?.email?.endsWith("@judge.invalid"));
+}
+
 /** Auth headers for hand-rolled fetches; pair with `credentials: "include"`. */
 export function authHeaders(): Record<string, string> {
   return user.access_token

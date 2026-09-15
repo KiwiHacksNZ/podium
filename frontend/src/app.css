@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=ABeeZee:ital@0;1&family=Figtree:wght@400;500;600;700;800&family=Source+Code+Pro:wght@500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=ABeeZee:ital@0;1&family=Figtree:wght@400;500;600;700;800&family=Jua&family=Source+Code+Pro:wght@500;700&display=swap");
 @import "tailwindcss";
 @import "./kiwihacks.css";
 @import "./nova.css";
@@ -15,9 +15,9 @@
   name: "nova";
   default: true;
   prefersdark: true;
-  --color-base-100: #161a3d;
-  --color-base-200: #0c1030;
-  --color-base-300: #1e2454;
+  --color-base-100: #0a0d28;
+  --color-base-200: #05071a;
+  --color-base-300: #161a3d;
   --color-base-content: #ffffff;
   --color-primary: #4f46e5;
   --color-primary-content: #ffffff;

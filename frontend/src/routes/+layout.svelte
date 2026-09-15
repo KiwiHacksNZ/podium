@@ -10,7 +10,12 @@
   import { env } from "$env/dynamic/public";
   import MaintenanceMode from "$lib/components/MaintenanceMode.svelte";
 
-  import { getAuthenticatedUser, isAuthenticated, signOut } from "$lib/user.svelte";
+  import {
+    getAuthenticatedUser,
+    isAuthenticated,
+    isCodeOnlyJudge,
+    signOut,
+  } from "$lib/user.svelte";
   import NoticeAndHelp from "$lib/components/NoticeAndHelp.svelte";
   import UpdateUser from "$lib/components/UpdateUser.svelte";
   import AirtableHitsCounter from "$lib/components/AirtableHitsCounter.svelte";
@@ -28,8 +33,7 @@
   );
   const description = $derived(
     page.data.meta?.find((m: { name: string }) => m.name === "description")
-      ?.content ||
-      "Podium - Kiwihacks peer-judging platform for hackathons",
+      ?.content || "Podium - Kiwihacks peer-judging platform for hackathons",
   );
   const additionalMeta = $derived(
     page.data.meta?.filter((m: { name: string }) => m.name !== "description") ||
@@ -37,6 +41,9 @@
   );
 
   const isAuthed = $derived(isAuthenticated());
+  const isJudgeOnly = $derived(
+    isAuthed && isCodeOnlyJudge(getAuthenticatedUser().user),
+  );
 
   const getDisplayName = () => {
     const user = getAuthenticatedUser().user;
@@ -68,13 +75,20 @@
   };
 
   // Navigation options
-  const navOptions = $derived.by(() => {
+  type NavItem = { label: string; icon: string };
+  const navOptions: Record<string, NavItem> = $derived.by(() => {
+    const currentUser = getAuthenticatedUser().user;
+
+    // A code-only judge signed in with a card, not an account. They have no
+    // projects and attend no events, so Home/Projects/Events are all dead ends
+    // for them — they are here to score one event and nothing else.
+    if (isCodeOnlyJudge(currentUser)) return {};
+
     const base = {
       "/": { label: "Home", icon: "home" },
       "/projects": { label: "Projects", icon: "projects" },
       "/events": { label: "Events", icon: "events" },
     };
-    const currentUser = getAuthenticatedUser().user;
     if (currentUser.is_superadmin) {
       return {
         ...base,
@@ -158,186 +172,241 @@
 {#if env.PUBLIC_MAINTENANCE_MODE === "true"}
   <MaintenanceMode />
 {:else if page.url.pathname !== "/login" && isAuthed}
-  <!-- Sidebar Layout for authenticated users -->
-  <div class="drawer lg:drawer-open">
-    <input id="sidebar-drawer" type="checkbox" class="drawer-toggle" />
-    <div class="drawer-content flex flex-col">
-      <!-- Top Navbar -->
-      <div class="navbar bg-base-200 lg:hidden" id="home-navbar">
-        <div class="flex-none">
-          <label
-            for="sidebar-drawer"
-            aria-label="open sidebar"
-            class="btn btn-square btn-ghost"
+  {#if isJudgeOnly}
+    <!-- Printed-code judges have a temporary judging identity, not a full
+         Podium account. Keep their shell focused on scoring and signing out. -->
+    <div class="min-h-screen flex flex-col">
+      <header
+        class="navbar bg-base-200 border-b border-base-300 px-4 sm:px-6"
+        id="judge-navbar"
+      >
+        <div class="flex-1 flex items-center gap-3">
+          <img
+            src="/assets/kiwihacks/kiwi-text.png"
+            alt="KiwiHacks"
+            class="h-7 sm:h-8 w-auto"
+          />
+          <span class="text-sm font-semibold opacity-70">Podium · Judge</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="hidden sm:inline text-sm font-semibold">
+            {getDisplayName()}
+          </span>
+          <button class="btn btn-outline btn-sm" onclick={signOut}
+            >Sign out</button
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              class="inline-block h-6 w-6 stroke-current"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d={iconPaths.menu}
-              />
-            </svg>
-          </label>
         </div>
-        <div class="flex-1">
-          <a href="/" class="flex items-center gap-2 btn btn-ghost px-2">
-            <img src="/assets/kiwihacks/kiwi-text.png" alt="Podium" class="h-6 w-auto" />
-          </a>
-        </div>
-      </div>
+      </header>
 
-      <!-- Main Content -->
-      <div class="flex-1 p-6">
-        <!-- NoticeAndHelp - Inside main content area -->
+      <main class="flex-1 p-4 sm:p-6">
         <NoticeAndHelp />
-
         {#if navigating.to && navigating.type != "form"}
           <LoadingSpinner {loadingText} />
         {:else}
           {@render children()}
         {/if}
-      </div>
+      </main>
     </div>
-
-    <!-- Sidebar -->
-    <div class="drawer-side" id="sidebar">
-      <label
-        for="sidebar-drawer"
-        aria-label="close sidebar"
-        class="drawer-overlay"
-      ></label>
-      <div class="min-h-full w-80 bg-base-200 flex flex-col" id="sidebar-ui">
-        <!-- Logo/Header -->
-        <div class="p-6 border-b border-base-300" id="sidebar-top">
-          <a href="/" class="sidebar-brand-link flex flex-col gap-1">
-            <img
-              src="/assets/kiwihacks/kiwi-text.png"
-              alt="KiwiHacks"
-              class="sidebar-brand-logo h-8 w-auto"
-            />
-            <p class="sidebar-brand-subtitle text-base-content/70 text-sm">
-              Podium
-            </p>
-          </a>
-        </div>
-
-        <!-- Navigation Menu -->
-        <div class="flex-1 p-4">
-          <ul class="menu menu-vertical space-y-2">
-            {#each Object.entries(navOptions) as [path, { label, icon }]}
-              <li>
-                <a
-                  href={path}
-                  class="flex items-center gap-3 p-3 rounded-lg transition-colors"
-                  class:bg-primary={page.url.pathname === path}
-                  class:text-primary-content={page.url.pathname === path}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d={iconPaths[icon as keyof typeof iconPaths]}
-                    />
-                  </svg>
-                  <span class="font-medium">{label}</span>
-                </a>
-              </li>
-            {/each}
-
-          </ul>
-        </div>
-
-        <!-- Bottom Section -->
-        <div
-          class="p-4 border-t border-base-300"
-          id="sidebar-settings"
-          bind:this={sidebarSettingsEl}
-        >
-          {#if settingsPopoutOpen}
-            <div class="sidebar-settings-popout" id="settings-popout">
-              <div class="sidebar-settings-section">
-                <h3 class="sidebar-settings-heading">Account</h3>
-                <p class="sidebar-settings-meta">
-                  Signed in as: <strong>{getAuthenticatedUser().user.email}</strong>
-                </p>
-                <p class="sidebar-settings-meta">
-                  Display Name: <strong>{getDisplayName()}</strong>
-                </p>
-                <div class="sidebar-settings-actions">
-                  <UpdateUser
-                    user={getAuthenticatedUser().user}
-                    buttonClass="btn btn-outline"
-                  />
-                  <button class="btn btn-outline" onclick={signOut}>Sign out</button>
-                </div>
-              </div>
-              <div class="sidebar-settings-section">
-                <h3 class="sidebar-settings-heading">Theme</h3>
-                <ThemeSwitcher
-                  buttonClass="btn btn-outline m-0"
-                  dropdownClass="dropdown-top"
-                />
-              </div>
-            </div>
-          {/if}
-          <button
-            class="sidebar-settings-trigger"
-            aria-expanded={settingsPopoutOpen}
-            aria-controls="settings-popout"
-            onclick={toggleSettingsPopout}
-          >
-            <div class="sidebar-settings-copy">
-              <p class="sidebar-settings-name">Kia ora, {getGreetingName()}!</p>
-              <p class="sidebar-settings-email">{getAuthenticatedUser().user.email}</p>
-            </div>
-            <span class="sidebar-settings-pill" aria-hidden="true">
+  {:else}
+    <!-- Sidebar Layout for full authenticated accounts -->
+    <div class="drawer lg:drawer-open">
+      <input id="sidebar-drawer" type="checkbox" class="drawer-toggle" />
+      <div class="drawer-content flex flex-col">
+        <!-- Top Navbar -->
+        <div class="navbar bg-base-200 lg:hidden" id="home-navbar">
+          <div class="flex-none">
+            <label
+              for="sidebar-drawer"
+              aria-label="open sidebar"
+              class="btn btn-square btn-ghost"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 sidebar-settings-chevron"
                 fill="none"
                 viewBox="0 0 24 24"
-                stroke="currentColor"
+                class="inline-block h-6 w-6 stroke-current"
               >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
-                  d={iconPaths.chevron}
+                  d={iconPaths.menu}
                 />
               </svg>
-            </span>
-          </button>
+            </label>
+          </div>
+          <div class="flex-1">
+            <a href="/" class="flex items-center gap-2 btn btn-ghost px-2">
+              <img
+                src="/assets/kiwihacks/kiwi-text.png"
+                alt="Podium"
+                class="h-6 w-auto"
+              />
+            </a>
+          </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-6">
+          <!-- NoticeAndHelp - Inside main content area -->
+          <NoticeAndHelp />
+
+          {#if navigating.to && navigating.type != "form"}
+            <LoadingSpinner {loadingText} />
+          {:else}
+            {@render children()}
+          {/if}
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="drawer-side" id="sidebar">
+        <label
+          for="sidebar-drawer"
+          aria-label="close sidebar"
+          class="drawer-overlay"
+        ></label>
+        <div class="min-h-full w-80 bg-base-200 flex flex-col" id="sidebar-ui">
+          <!-- Logo/Header -->
+          <div class="p-6 border-b border-base-300" id="sidebar-top">
+            <a href="/" class="sidebar-brand-link flex flex-col gap-1">
+              <img
+                src="/assets/kiwihacks/kiwi-text.png"
+                alt="KiwiHacks"
+                class="sidebar-brand-logo h-8 w-auto"
+              />
+              <p class="sidebar-brand-subtitle text-base-content/70 text-sm">
+                Podium
+              </p>
+            </a>
+          </div>
+
+          <!-- Navigation Menu -->
+          <div class="flex-1 p-4">
+            <ul class="menu menu-vertical space-y-2">
+              {#each Object.entries(navOptions) as [path, { label, icon }]}
+                <li>
+                  <a
+                    href={path}
+                    class="flex items-center gap-3 p-3 rounded-lg transition-colors"
+                    class:bg-primary={page.url.pathname === path}
+                    class:text-primary-content={page.url.pathname === path}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d={iconPaths[icon as keyof typeof iconPaths]}
+                      />
+                    </svg>
+                    <span class="font-medium">{label}</span>
+                  </a>
+                </li>
+              {/each}
+            </ul>
+          </div>
+
+          <!-- Bottom Section -->
+          <div
+            class="p-4 border-t border-base-300"
+            id="sidebar-settings"
+            bind:this={sidebarSettingsEl}
+          >
+            {#if settingsPopoutOpen}
+              <div class="sidebar-settings-popout" id="settings-popout">
+                <div class="sidebar-settings-section">
+                  <h3 class="sidebar-settings-heading">Account</h3>
+                  <p class="sidebar-settings-meta">
+                    Signed in as: <strong
+                      >{getAuthenticatedUser().user.email}</strong
+                    >
+                  </p>
+                  <p class="sidebar-settings-meta">
+                    Display Name: <strong>{getDisplayName()}</strong>
+                  </p>
+                  <div class="sidebar-settings-actions">
+                    <UpdateUser
+                      user={getAuthenticatedUser().user}
+                      buttonClass="btn btn-outline"
+                    />
+                    <button class="btn btn-outline" onclick={signOut}
+                      >Sign out</button
+                    >
+                  </div>
+                </div>
+                <div class="sidebar-settings-section">
+                  <h3 class="sidebar-settings-heading">Theme</h3>
+                  <ThemeSwitcher
+                    buttonClass="btn btn-outline m-0"
+                    dropdownClass="dropdown-top"
+                  />
+                </div>
+              </div>
+            {/if}
+            <button
+              class="sidebar-settings-trigger"
+              aria-expanded={settingsPopoutOpen}
+              aria-controls="settings-popout"
+              onclick={toggleSettingsPopout}
+            >
+              <div class="sidebar-settings-copy">
+                <p class="sidebar-settings-name">
+                  Kia ora, {getGreetingName()}!
+                </p>
+                <p class="sidebar-settings-email">
+                  {getAuthenticatedUser().user.email}
+                </p>
+              </div>
+              <span class="sidebar-settings-pill" aria-hidden="true">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 sidebar-settings-chevron"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d={iconPaths.chevron}
+                  />
+                </svg>
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  {/if}
 {:else}
   <!-- Login page or unauthenticated users without sidebar -->
   <div class="min-h-screen flex flex-col" id="landing">
-    <div class="navbar bg-base-100 border-b border-base-300" id="landing-navbar">
+    <div
+      class="navbar bg-base-100 border-b border-base-300"
+      id="landing-navbar"
+    >
       <div class="navbar-start"></div>
       <div class="navbar-center">
         <a href="/" class="flex items-center gap-2 btn btn-ghost px-2">
-          <img src="/assets/kiwihacks/kiwi-text.png" alt="Podium" class="h-7 w-auto" />
+          <img
+            src="/assets/kiwihacks/kiwi-text.png"
+            alt="Podium"
+            class="h-7 w-auto"
+          />
         </a>
       </div>
       <div class="navbar-end gap-2">
         <a href="/events" class="btn btn-ghost btn-sm">Events</a>
         <a
-          href="https://nova.kiwihacks.com"
+          href="https://nova.kiwihacks.org"
           target="_blank"
           rel="noreferrer"
           class="btn btn-secondary btn-sm"
@@ -370,7 +439,6 @@
     <ThemeSwitcher />
   </div>
 {/if}
-
 
 <!-- Dev Mode Indicator (red border + notice) -->
 <DevModeIndicator />

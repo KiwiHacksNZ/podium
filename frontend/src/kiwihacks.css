@@ -117,7 +117,10 @@
   color: var(--kh-ink);
 }
 
-[data-theme="kiwihacks"] #sidebar-settings .sidebar-settings-section + .sidebar-settings-section {
+[data-theme="kiwihacks"]
+  #sidebar-settings
+  .sidebar-settings-section
+  + .sidebar-settings-section {
   border-top: var(--kh-border);
 }
 
@@ -171,7 +174,10 @@
   border: var(--kh-border);
   border-radius: var(--kh-radius);
   color: var(--kh-ink);
-  transition: background-color 180ms ease, box-shadow 180ms ease, transform 160ms ease;
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 160ms ease;
 }
 
 [data-theme="kiwihacks"] .btn:hover {
@@ -212,6 +218,26 @@
 [data-theme="kiwihacks"] .btn-ghost:hover {
   border-color: var(--kh-ink-soft);
   background: rgba(145, 226, 255, 0.32) !important;
+}
+
+/* Judging uses one repeated colour, styled like the blue FAQ panels on
+   kiwihacks.org rather than treating the brand green as a solid canvas. */
+[data-theme="kiwihacks"] .judge-criterion-card {
+  color: var(--kh-ink);
+  background: var(--kh-blue);
+  border: var(--kh-border);
+  box-shadow: 0 2px 4px rgba(19, 47, 30, 0.3);
+}
+
+[data-theme="kiwihacks"] .judge-criterion-pill {
+  color: var(--kh-ink);
+  background: rgba(255, 255, 255, 0.72);
+  border: var(--kh-border);
+}
+
+[data-theme="kiwihacks"] .judge-criterion-rating {
+  background: rgba(255, 255, 255, 0.48);
+  border: 1.5px dashed rgba(19, 47, 30, 0.55);
 }
 
 [data-theme="kiwihacks"] .input,
