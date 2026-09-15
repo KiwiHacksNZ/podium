@@ -23,61 +23,33 @@
   type Criterion = "originality" | "technicality" | "theme" | "usability";
   type Draft = Record<Criterion, number | null>;
 
-  // Theme tokens, not raw palette colours: the criteria have to re-skin with the
-  // rest of the app when a series changes theme (see docs/new-series-and-theming).
-  // primary/warning/info/neutral is the one set that stays visually distinct
-  // under both themes — success duplicates primary on kiwihacks, and accent
-  // duplicates warning on nova.
-  const criteria: {
-    key: Criterion;
-    name: string;
-    question: string;
-    card: string;
-    pill: string;
-    inset: string;
-    helper: string;
-  }[] = [
+  const criteria: { key: Criterion; name: string; question: string }[] = [
     {
       key: "originality",
       name: "Originality",
       question: "How distinct is the project from common projects?",
-      card: "bg-primary text-primary-content",
-      pill: "bg-primary-content text-primary",
-      inset: "bg-black/15",
-      helper: "opacity-80",
     },
     {
       key: "technicality",
       name: "Technicality",
-      question:
-        "How much effort did the builder put into the implementation?",
-      card: "bg-warning text-warning-content",
-      pill: "bg-warning-content text-warning",
-      inset: "bg-black/10",
-      helper: "opacity-80",
+      question: "How much effort did the builder put into the implementation?",
     },
     {
       key: "theme",
       name: "Theme",
       question: "How well does the project fit the event theme?",
-      card: "bg-info text-info-content",
-      pill: "bg-info-content text-info",
-      inset: "bg-black/15",
-      helper: "opacity-80",
     },
     {
       key: "usability",
       name: "Usability",
       question: "Did you like using it? Could you use it at all?",
-      card: "bg-neutral text-neutral-content",
-      pill: "bg-neutral-content text-neutral",
-      inset: "bg-black/15",
-      helper: "opacity-80",
     },
   ];
 
   const isJudge = $derived(
-    Boolean(getAuthenticatedUser().user.judge_event_ids?.includes(data.event.id)),
+    Boolean(
+      getAuthenticatedUser().user.judge_event_ids?.includes(data.event.id),
+    ),
   );
 
   // Snapshot on mount: a fresh load remounts the page, so this never goes stale.
@@ -191,7 +163,9 @@
   </div>
 {:else if allScored && !reviewing}
   <div class="container mx-auto max-w-3xl p-4 sm:p-6">
-    <section class="rounded-box bg-success text-success-content p-8 text-center">
+    <section
+      class="rounded-box bg-success text-success-content p-8 text-center"
+    >
       <span
         class="inline-flex items-center rounded-full bg-success-content text-success px-3 py-1 text-sm font-extrabold uppercase tracking-wide"
       >
@@ -243,6 +217,15 @@
     </label>
 
     <div class="card bg-base-200 rounded-box">
+      {#if project.image_url}
+        <figure class="w-full bg-base-300/60">
+          <img
+            src={project.image_url}
+            alt={`${project.name} project`}
+            class="max-h-96 w-full object-contain"
+          />
+        </figure>
+      {/if}
       <div class="card-body gap-3">
         {#if project.description}
           <p class="break-words text-sm">{project.description}</p>
@@ -270,13 +253,13 @@
 
     <div class="flex flex-col gap-4">
       {#each criteria as criterion (criterion.key)}
-        <section class="rounded-box p-5 sm:p-6 {criterion.card}">
+        <section class="judge-criterion-card rounded-box p-5 sm:p-6">
           <span
-            class="inline-flex items-center rounded-full px-3 py-1 text-sm font-extrabold uppercase tracking-wide {criterion.pill}"
+            class="judge-criterion-pill inline-flex items-center rounded-full px-3 py-1 text-sm font-extrabold uppercase tracking-wide"
           >
             {criterion.name}
           </span>
-          <div class="mt-4 rounded-box px-4 py-3 {criterion.inset}">
+          <div class="judge-criterion-rating mt-4 rounded-box px-4 py-3">
             <StarRating
               label={criterion.name}
               value={draft ? draft[criterion.key] : null}
@@ -285,7 +268,7 @@
               }}
             />
           </div>
-          <p class="mt-3 text-sm font-medium {criterion.helper}">
+          <p class="mt-3 text-sm font-medium opacity-80">
             {criterion.question}
           </p>
         </section>

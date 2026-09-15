@@ -64,7 +64,9 @@ export function applyStoredTheme() {
     applySystemTheme();
     return;
   }
-  document.documentElement.setAttribute("data-theme", lightTheme);
+  // Nova is the active series, so new visitors start in its brand theme.
+  // A saved manual choice or explicit system mode still takes precedence.
+  document.documentElement.setAttribute("data-theme", darkTheme);
 }
 
 export function setSystemTheme() {
@@ -127,14 +129,20 @@ export function withHttpsIfMissing(url: string | null | undefined): string {
  * wrong day for everyone here. The explicit numeric options pin the order, so
  * the locale tag alone is not doing the work.
  */
-const DATE_PARTS = { day: "2-digit", month: "2-digit", year: "2-digit" } as const;
+const DATE_PARTS = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "2-digit",
+} as const;
 
 export function formatDate(value: string | Date | null | undefined): string {
   if (!value) return "—";
   return new Date(value).toLocaleDateString("en-NZ", DATE_PARTS);
 }
 
-export function formatDateTime(value: string | Date | null | undefined): string {
+export function formatDateTime(
+  value: string | Date | null | undefined,
+): string {
   if (!value) return "—";
   return new Date(value).toLocaleString("en-NZ", {
     ...DATE_PARTS,

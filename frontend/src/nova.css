@@ -131,7 +131,10 @@
   color: var(--nv-ink);
 }
 
-[data-theme="nova"] #sidebar-settings .sidebar-settings-section + .sidebar-settings-section {
+[data-theme="nova"]
+  #sidebar-settings
+  .sidebar-settings-section
+  + .sidebar-settings-section {
   border-top: var(--nv-border);
 }
 
@@ -186,7 +189,10 @@
   border: transparent;
   border-radius: var(--nv-radius);
   color: var(--nv-ink);
-  transition: background-color 180ms ease, box-shadow 180ms ease, transform 160ms ease;
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 160ms ease;
 }
 
 [data-theme="nova"] .btn:hover {
@@ -227,6 +233,20 @@
 
 [data-theme="nova"] .btn-ghost:hover {
   background: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="nova"] .judge-criterion-card {
+  color: var(--nv-ink);
+  background: var(--nv-primary);
+}
+
+[data-theme="nova"] .judge-criterion-pill {
+  color: var(--nv-primary);
+  background: var(--nv-ink);
+}
+
+[data-theme="nova"] .judge-criterion-rating {
+  background: rgba(0, 0, 0, 0.15);
 }
 
 [data-theme="nova"] .input,
