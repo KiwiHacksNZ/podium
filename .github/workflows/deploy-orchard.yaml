@@ -27,6 +27,13 @@ jobs:
           WEBHOOK_URL: ${{ secrets.ORCHARD_WEBHOOK_URL }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
+          # Production deploys run through Portainer. Orchard is optional, and
+          # without its webhook secret this job failed on every push to main —
+          # a permanent red X that hides real failures. Skip instead.
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "::notice::ORCHARD_WEBHOOK_URL not set — skipping Orchard deploy."
+            exit 0
+          fi
           SHORT_SHA="${HEAD_SHA:0:7}"
           curl -sf -X POST "$WEBHOOK_URL" \
             -H "Content-Type: application/json" \
