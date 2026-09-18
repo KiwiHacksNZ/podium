@@ -96,6 +96,12 @@ settings.validators.register(
             "redis_url",
             default="",
         ),
+        # GitHub API token for repo validation. Empty falls back to
+        # unauthenticated calls, capped at 60/hr for the whole server.
+        Validator(
+            "github_token",
+            default="",
+        ),
         # Read-only database endpoint for production replicas.
         # Default "" means the consuming code (db/postgres/base.py) falls back to database_url.
         Validator(

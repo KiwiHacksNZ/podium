@@ -23,7 +23,7 @@ from sqlalchemy.orm import selectinload
 from podium.authz import get_judged_event
 from podium.config import settings
 from podium.constants import BAD_ACCESS, JudgingCriterion
-from podium.limiter import limiter
+from podium.cache import cache_get, cache_incr
 from podium.db.postgres import (
     Event,
     EventJudgeLink,
@@ -37,6 +37,7 @@ from podium.db.postgres import (
     scalar_all,
     scalar_one_or_none,
 )
+from podium.routers.events import request_ip
 from podium.routers.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     _set_access_cookie,
@@ -45,6 +46,18 @@ from podium.routers.auth import (
 )
 
 router = APIRouter(prefix="/judging", tags=["judging"])
+
+# Judge codes are only 6 digits, so redemption needs guessing protection — but a
+# plain per-IP request limit would count a room of judges typing *correct* codes
+# off printed cards, all behind the venue's one NAT address, and lock them out.
+# Only failures are counted, so a judge who gets their code right is never
+# throttled, while an attacker gets 20 guesses an hour against a 1,000,000 space.
+JUDGE_REDEEM_MAX_FAILURES = 20
+JUDGE_REDEEM_FAILURE_WINDOW = 3600
+
+
+async def _count_redeem_failure(fail_key: str) -> None:
+    await cache_incr(fail_key, ttl=JUDGE_REDEEM_FAILURE_WINDOW)
 
 
 class JudgeProject(BaseModel):
@@ -102,8 +115,6 @@ def _score_to_public(score: JudgeScore) -> JudgeScorePublic:
 
 
 @router.post("/redeem")
-# Codes are only 6 digits, so throttle guessing.
-@limiter.limit("5/minute")
 async def redeem_judge_code(
     request: Request,
     body: RedeemJudgeCode,
@@ -118,8 +129,17 @@ async def redeem_judge_code(
     still lands on their existing scores. The email is kept against the event so
     organisers can contact their judges.
     """
+    ip = request_ip(request)
+    fail_key = f"judge-redeem-fail:{ip}"
+    if (await cache_get(fail_key) or 0) >= JUDGE_REDEEM_MAX_FAILURES:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many invalid judge codes from this network — ask an organiser for help",
+        )
+
     code = body.code.strip()
     if not (len(code) == 6 and code.isdigit()):
+        await _count_redeem_failure(fail_key)
         raise HTTPException(status_code=400, detail="Judge codes are 6 digits")
 
     name = body.name.strip()
@@ -136,6 +156,7 @@ async def redeem_judge_code(
         session, select(JudgeCode).where(JudgeCode.code == code)
     )
     if card is not None and card.redeemed_at is not None:
+        await _count_redeem_failure(fail_key)
         raise HTTPException(
             status_code=409,
             detail="That card has already been used — ask an organiser for another",
@@ -147,6 +168,7 @@ async def redeem_judge_code(
         lookup = select(Event).where(Event.judge_code == code)
     event = await scalar_one_or_none(session, lookup)
     if not event or event.deleted_at is not None:
+        await _count_redeem_failure(fail_key)
         raise HTTPException(status_code=404, detail="That judge code isn't valid")
 
     # Deterministic placeholder identity: the same email redeeming the same

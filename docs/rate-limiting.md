@@ -34,7 +34,9 @@ At signup and login, the email is checked against [MailChecker](https://github.c
 
 Authenticated endpoints use **user-email-based** rate limiting (extracted from the JWT). This is fairer than IP-based limits for hackathon wifi where many users share a single IP.
 
-**Config:** `backend/podium/limiter.py` defines the limiter keyed by `get_user_email`.
+> ⚠️ Never put `@limiter.limit` on an unauthenticated endpoint. With no JWT to read, the key falls back to the client IP — which at a venue is one NAT address for everyone, so the limit applies to the whole room at once. A `5/minute` login limit locks out attendee number six. Use Turnstile, or throttle failures (below), instead.
+
+**Config:** `backend/podium/limiter.py` defines the limiter keyed by `get_user_email`. Counters live in Redis (`PODIUM_REDIS_URL`) so all four uvicorn workers share one budget; with per-process storage a "10/minute" limit is really 10–40 depending on which worker answers. If Redis is unreachable it falls back to per-process counters rather than failing requests.
 
 **Adding a limit to a new endpoint:**
 
@@ -48,7 +50,13 @@ async def my_endpoint(request: Request, ...):
     ...
 ```
 
-**Currently limited:** `POST /projects/validate` (10/minute per user)
+**Currently limited:** `POST /projects/validate` and `POST /projects/image-upload` (10/minute per user)
+
+### Judge code redemption
+
+`POST /judging/redeem` has no Turnstile widget and no user to key on, but its 6-digit codes need guessing protection. It counts **failed** redemptions per IP (20 per hour, in Redis) rather than requests, so a room of judges typing correct codes off printed cards is never throttled while an attacker gets 20 guesses an hour against a 1,000,000 space. Fails open if Redis is down.
+
+**Implementation:** `backend/podium/routers/judging.py` — `JUDGE_REDEEM_MAX_FAILURES`.
 
 ## Frontend (asyncClick action)
 

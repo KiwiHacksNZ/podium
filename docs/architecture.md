@@ -7,7 +7,7 @@ Podium is a judging platform for Kiwihacks hackathons. Attendees select an offic
 - **Frontend:** SvelteKit (Svelte 5), Tailwind, DaisyUI
 - **Backend:** FastAPI, SQLModel (async PostgreSQL)
 - **Auth:** Magic link email via Loops API
-- **Cache:** Redis (optional — leaderboards cached 30s; app works without it)
+- **Cache:** Redis (optional — leaderboards cached 30s, repo existence checks 10m, plus shared rate-limit counters; app works without it, with limits falling back to per-worker)
 - **CAPTCHA:** Cloudflare Turnstile on unauthenticated endpoints
 - **Monitoring:** Sentry
 
@@ -59,7 +59,7 @@ Key rules:
 Validation has two independent layers:
 
 **1. Frontend (instant, non-blocking warnings)** — `frontend/src/lib/validation.ts`
-Shows a warning as the user types. Only implemented for `github` and `itch`; setting either field to `none` or `custom` shows no frontend warning at all. There is no frontend equivalent for custom validators.
+Shows a warning as the user types. Only implemented for `github`, `git` and `itch`; setting either field to `none` or `custom` shows no frontend warning at all. There is no frontend equivalent for custom validators.
 
 **2. Backend (background, async)** — `backend/podium/validators/`
 Runs after every project create/update; never blocks submission. Results appear as badges (`pending → valid | warning`).
@@ -68,8 +68,8 @@ Validation strategy is configured per-event via `repo_validation` and `demo_vali
 
 | Setting | Frontend warning | Backend check |
 |---|---|---|
-| `github` | Regex check for valid GitHub URL | GitHub public API — repo must exist |
-| `git` | URL host must contain `git`, path must look like a repo | Shape check only; accepts GitHub, GitLab, and self-hosted git domains |
+| `github` | Warns only if the URL isn't shaped like a repo at all | Existence check against GitHub, GitLab, Codeberg or Bitbucket; any other host is accepted unchecked |
+| `git` | Host must be a known forge or contain `git`, path must look like a repo | Shape check only, no network call |
 | `itch` | Regex check for valid itch.io URL | Scrapes itch.io for `.game_frame` (browser-playable) |
 | `custom` | None | Calls the named module from `validators/custom/REGISTRY` |
 | `none` | None | Skipped |

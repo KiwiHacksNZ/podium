@@ -31,6 +31,13 @@ Optional but important:
 - `PODIUM_LOOPS_API_KEY`
 - `PODIUM_LOOPS_TRANSACTIONAL_ID`
 - `PODIUM_SENTRY_DSN`
+- `PODIUM_GITHUB_TOKEN` — set this for any event over ~30 GitHub-hosted
+  submissions. Without it those lookups are unauthenticated, capped at 60/hour
+  for the whole server, after which they show a "could not reach GitHub"
+  warning. Any fine-grained token with no permissions raises the cap to
+  5000/hour. Only affects GitHub; GitLab and Codeberg are checked
+  unauthenticated with far looser limits, and Bitbucket shares the 60/hour
+  anonymous cap but is rarely used.
 - Frontend `PUBLIC_SENTRY_DSN` in Vercel
 
 Required frontend variables in Vercel:

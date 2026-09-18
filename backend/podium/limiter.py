@@ -47,5 +47,14 @@ def get_user_or_ip_for_sentry(request: Request) -> str:
     return get_remote_address(request)
 
 
-# Rate limiter keyed by user email (for authenticated endpoints only)
-limiter = Limiter(key_func=get_user_email)
+# Rate limiter keyed by user email (for authenticated endpoints only).
+#
+# Counters live in Redis so the four uvicorn workers share one budget — with
+# per-process storage a "10/minute" limit is really anywhere from 10 to 40
+# depending on which worker accepts the connection. If Redis is unreachable
+# slowapi falls back to per-process counters rather than failing requests.
+limiter = Limiter(
+    key_func=get_user_email,
+    storage_uri=settings.get("redis_url", "") or None,
+    in_memory_fallback_enabled=True,
+)

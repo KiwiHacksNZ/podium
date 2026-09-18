@@ -88,3 +88,21 @@ async def cache_delete(key: str) -> None:
         await _redis.delete(key)
     except Exception as exc:
         logger.warning("cache_delete(%s) failed: %s", key, exc)
+
+
+async def cache_incr(key: str, ttl: int) -> int:
+    """Increment a counter under key and return its new value, setting the TTL on
+    first write. Returns 0 when Redis is unavailable, so callers that throttle on
+    a threshold fail open rather than locking everyone out.
+    """
+    if not _redis:
+        return 0
+    try:
+        async with _redis.pipeline() as pipe:
+            pipe.incr(key)
+            pipe.expire(key, ttl, nx=True)
+            count, _ = await pipe.execute()
+        return int(count)
+    except Exception as exc:
+        logger.warning("cache_incr(%s) failed: %s", key, exc)
+        return 0
