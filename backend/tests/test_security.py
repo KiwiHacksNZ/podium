@@ -1,11 +1,12 @@
 from io import BytesIO
 import inspect
+import random
 import ssl
 
 import httpx
 import pytest
 from fastapi import HTTPException, UploadFile
-from PIL import Image
+from PIL import Image, ImageDraw
 from starlette.requests import Request
 from starlette.datastructures import Headers
 
@@ -225,6 +226,111 @@ async def test_image_upload_verifies_and_saves_png(tmp_path, monkeypatch) -> Non
 
     assert filename.endswith(".png")
     assert (tmp_path / filename).is_file()
+
+
+# ── project image downscaling ───────────────────────────────────────────────
+#
+# Thumbnails are served off the VPS by uvicorn, so an unresized 8MB phone photo
+# is 8MB down the wire for every person who opens the showcase page.
+
+
+def _detailed(width: int, height: int) -> Image.Image:
+    """An image with enough variation that re-encoding is a fair test."""
+    image = Image.new("RGB", (width, height), (24, 26, 32))
+    draw = ImageDraw.Draw(image)
+    for i in range(0, height, 40):
+        draw.rectangle([20, i, width - 20, i + 24], fill=(60 + i % 120, 90, 160))
+    return image
+
+
+@pytest.mark.asyncio
+async def test_oversized_upload_is_downscaled(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(projects, "PROJECT_IMAGE_DIR", tmp_path)
+    contents = BytesIO()
+    _detailed(3000, 2000).save(contents, format="JPEG", quality=95)
+    original_bytes = len(contents.getvalue())
+    file = upload("big.jpg", "image/jpeg", contents.getvalue())
+
+    saved = tmp_path / await projects._save_project_image(file)
+
+    with Image.open(saved) as image:
+        assert max(image.size) == projects.MAX_PROJECT_IMAGE_DIMENSION
+    assert saved.stat().st_size < original_bytes
+
+
+@pytest.mark.asyncio
+async def test_small_upload_is_left_alone(tmp_path, monkeypatch) -> None:
+    """Nothing to gain from re-encoding, and re-encoding costs quality."""
+    monkeypatch.setattr(projects, "PROJECT_IMAGE_DIR", tmp_path)
+    contents = BytesIO()
+    _detailed(400, 300).save(contents, format="JPEG", quality=95)
+    payload = contents.getvalue()
+    file = upload("small.jpg", "image/jpeg", payload)
+
+    saved = tmp_path / await projects._save_project_image(file)
+
+    assert saved.read_bytes() == payload
+
+
+def test_downscale_keeps_original_when_re_encoding_would_grow_it(tmp_path) -> None:
+    """Fewer pixels does not guarantee fewer bytes. Bandwidth is the point, so a
+    re-encode that comes out bigger must be discarded."""
+    destination = tmp_path / "noise.png"
+    rng = random.Random(7)
+    image = Image.new("RGB", (2000, 1400))
+    pixels = image.load()
+    for y in range(0, 1400, 2):
+        for x in range(0, 2000, 2):
+            colour = (rng.randrange(256), rng.randrange(256), rng.randrange(256))
+            for dy in range(2):
+                for dx in range(2):
+                    pixels[x + dx, y + dy] = colour
+    image.save(destination, format="PNG")
+    before = destination.read_bytes()
+
+    projects._downscale_project_image(destination, "PNG")
+
+    assert destination.read_bytes() == before
+
+
+def test_downscale_preserves_gif_animation(tmp_path) -> None:
+    """exif_transpose collapses a multi-frame image to its first frame, so the
+    still-image path must not run for animations."""
+    destination = tmp_path / "anim.gif"
+    frames = []
+    for i in range(4):
+        frame = Image.new("RGB", (2000, 1500), (i * 60, 255 - i * 60, 128))
+        ImageDraw.Draw(frame).rectangle(
+            [i * 400, i * 300, i * 400 + 500, i * 300 + 400], fill=(255, 255, 0)
+        )
+        frames.append(frame.convert("P", palette=Image.ADAPTIVE))
+    frames[0].save(
+        destination, format="GIF", save_all=True, append_images=frames[1:],
+        duration=150, loop=0,
+    )
+
+    projects._downscale_project_image(destination, "GIF")
+
+    with Image.open(destination) as result:
+        assert result.n_frames == 4
+        assert max(result.size) == projects.MAX_PROJECT_IMAGE_DIMENSION
+
+
+def test_downscale_applies_exif_rotation_and_strips_it(tmp_path) -> None:
+    """Phones record rotation in EXIF rather than pixels. Re-encoding without
+    applying it first would bake in a sideways thumbnail, and keeping the tag
+    would publish the photo's GPS coordinates."""
+    destination = tmp_path / "rotated.jpg"
+    exif = Image.Exif()
+    exif[274] = 6  # rotate 90° clockwise for display
+    _detailed(1500, 2400).save(destination, format="JPEG", quality=95, exif=exif)
+
+    projects._downscale_project_image(destination, "JPEG")
+
+    with Image.open(destination) as result:
+        # Orientation 6 means the 1500x2400 source displays as landscape.
+        assert result.size[0] > result.size[1]
+        assert result.getexif().get(274) is None
 
 
 # ── judge-code guessing throttle ────────────────────────────────────────────

@@ -81,6 +81,15 @@ Validation strategy is configured per-event via `repo_validation` and `demo_vali
 
 Events can also set `require_address: true` to enforce that users have a shipping address on file before submitting — this is a hard block at the API level.
 
+## Project Images
+
+Thumbnails are uploaded to `POST /projects/image-upload` and served by the backend
+from `PODIUM_UPLOADS_DIR` — there is no CDN, so every showcase view pulls them off
+the VPS. Uploads are capped at 8MB, then downscaled to 1200px on the long edge and
+re-encoded, keeping the original only if the re-encode came out larger. EXIF
+rotation is applied to stills before resizing (and the tag dropped with it, so
+phone GPS data is not published); animated GIFs keep every frame.
+
 ## User Flow
 
 ```

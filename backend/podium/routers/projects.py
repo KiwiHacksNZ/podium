@@ -1,3 +1,5 @@
+import io
+import logging
 import os
 import warnings
 from secrets import token_urlsafe
@@ -6,7 +8,8 @@ from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, HTTPException, Path as FastAPIPath, Query, Request, UploadFile
-from PIL import Image, UnidentifiedImageError
+from fastapi.concurrency import run_in_threadpool
+from PIL import Image, ImageOps, ImageSequence, UnidentifiedImageError
 from sqlalchemy import func
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -43,10 +46,19 @@ from podium.constants import (
     PlatformAdminPermission,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 PROJECT_IMAGE_DIR = Path(os.getenv("PODIUM_UPLOADS_DIR", "./uploads")) / "project-images"
 MAX_PROJECT_IMAGE_BYTES = 8 * 1024 * 1024
+# These are card thumbnails, never viewed full-bleed, but they are served off the
+# VPS by uvicorn — so a showcase page of 40 unresized phone photos is hundreds of
+# megabytes out the door every time someone opens it, multiplied by everyone in
+# the room. Downscaling on upload is what keeps that survivable.
+MAX_PROJECT_IMAGE_DIMENSION = 1200
+JPEG_QUALITY = 82
+WEBP_QUALITY = 82
 ALLOWED_IMAGE_CONTENT_TYPES = {"image/gif", "image/jpeg", "image/png", "image/webp"}
 IMAGE_FORMAT_EXTENSIONS = {
     "GIF": {".gif"},
@@ -64,6 +76,71 @@ def validate_demo_field(demo: str | None, event: Event) -> None:
 
 def _public_project_image_url(request: Request, filename: str) -> str:
     return f"{str(request.base_url).rstrip('/')}/project-images/{filename}"
+
+
+def _downscale_project_image(destination: Path, image_format: str) -> None:
+    """Shrink an uploaded image in place so the showcase page stays cheap to load.
+
+    Runs after the file has been validated, and is best-effort: if anything goes
+    wrong the validated original is left untouched rather than failing someone's
+    submission over a thumbnail.
+
+    Re-encoding also drops EXIF, which is worth having on its own — phone photos
+    carry GPS coordinates, and these images are public.
+    """
+    try:
+        with Image.open(destination) as image:
+            animated = getattr(image, "n_frames", 1) > 1
+            if not animated:
+                # Phone cameras record rotation in EXIF rather than pixels, so
+                # without this a portrait photo re-encodes sideways. Only safe on
+                # stills: on an animated image it collapses every frame into one.
+                image = ImageOps.exif_transpose(image)
+
+            if max(image.size) <= MAX_PROJECT_IMAGE_DIMENSION:
+                return
+
+            frames = [_fit(frame.copy()) for frame in ImageSequence.Iterator(image)]
+            durations = [
+                frame.info.get("duration", 100)
+                for frame in ImageSequence.Iterator(image)
+            ]
+            loop = image.info.get("loop", 0)
+
+        save_options: dict = {}
+        if image_format == "JPEG":
+            save_options = {"quality": JPEG_QUALITY, "optimize": True, "progressive": True}
+        elif image_format == "PNG":
+            save_options = {"optimize": True}
+        elif image_format == "WEBP":
+            save_options = {"quality": WEBP_QUALITY, "method": 6}
+
+        if len(frames) > 1:
+            save_options |= {
+                "save_all": True,
+                "append_images": frames[1:],
+                "loop": loop,
+                "duration": durations,
+            }
+
+        encoded = io.BytesIO()
+        frames[0].save(encoded, format=image_format, **save_options)
+
+        # Fewer pixels does not guarantee fewer bytes — downscaling a photographic
+        # PNG turns cleanly-compressible detail into per-pixel noise and can come
+        # out bigger than the original. Bandwidth is the whole point, so keep
+        # whichever is actually smaller.
+        if encoded.tell() < destination.stat().st_size:
+            destination.write_bytes(encoded.getvalue())
+    except Exception:
+        logger.warning("Could not downscale %s; keeping the original", destination.name)
+
+
+def _fit(frame: Image.Image) -> Image.Image:
+    frame.thumbnail(
+        (MAX_PROJECT_IMAGE_DIMENSION, MAX_PROJECT_IMAGE_DIMENSION), Image.LANCZOS
+    )
+    return frame
 
 
 async def _save_project_image(file: UploadFile) -> str:
@@ -95,6 +172,10 @@ async def _save_project_image(file: UploadFile) -> str:
 
         if not image_format or suffix not in IMAGE_FORMAT_EXTENSIONS.get(image_format, set()):
             raise HTTPException(status_code=422, detail="Image contents do not match its file type")
+
+        # Pillow is CPU-bound and blocking; on the event loop a few concurrent
+        # uploads would stall every other request this worker is serving.
+        await run_in_threadpool(_downscale_project_image, destination, image_format)
     except HTTPException:
         destination.unlink(missing_ok=True)
         raise
