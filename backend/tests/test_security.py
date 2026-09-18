@@ -1,4 +1,5 @@
 from io import BytesIO
+import inspect
 import ssl
 
 import httpx
@@ -8,7 +9,9 @@ from PIL import Image
 from starlette.requests import Request
 from starlette.datastructures import Headers
 
-from podium.routers import projects
+from podium import cache
+from podium.limiter import limiter
+from podium.routers import auth, projects
 from podium.routers.auth import safe_redirect_path
 from podium.db.postgres import base as postgres_base
 from podium.db.postgres import Vote, VoteAuditLog
@@ -222,3 +225,111 @@ async def test_image_upload_verifies_and_saves_png(tmp_path, monkeypatch) -> Non
 
     assert filename.endswith(".png")
     assert (tmp_path / filename).is_file()
+
+
+# ── judge-code guessing throttle ────────────────────────────────────────────
+
+
+class FakeRedisPipeline:
+    def __init__(self, store: dict) -> None:
+        self.store = store
+        self.queued: list = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_exc) -> None:
+        return None
+
+    def incr(self, key: str):
+        self.queued.append(("incr", key))
+        return self
+
+    def expire(self, key: str, ttl: int, nx: bool = False):
+        self.queued.append(("expire", key, ttl, nx))
+        return self
+
+    async def execute(self) -> list:
+        results = []
+        for op in self.queued:
+            if op[0] == "incr":
+                self.store[op[1]] = str(int(self.store.get(op[1], "0")) + 1)
+                results.append(int(self.store[op[1]]))
+            else:
+                results.append(True)
+        self.queued.clear()
+        return results
+
+
+class FakeRedis:
+    def __init__(self) -> None:
+        self.store: dict[str, str] = {}
+
+    def pipeline(self) -> FakeRedisPipeline:
+        return FakeRedisPipeline(self.store)
+
+    async def get(self, key: str):
+        return self.store.get(key)
+
+
+@pytest.mark.asyncio
+async def test_cache_incr_counts_and_is_readable_by_cache_get(monkeypatch):
+    """cache_incr stores a bare integer; cache_get must read it back as an int,
+    since the redeem throttle compares the two."""
+    fake = FakeRedis()
+    monkeypatch.setattr(cache, "_redis", fake)
+
+    assert await cache.cache_incr("judge-redeem-fail:1.2.3.4", ttl=60) == 1
+    assert await cache.cache_incr("judge-redeem-fail:1.2.3.4", ttl=60) == 2
+    assert await cache.cache_get("judge-redeem-fail:1.2.3.4") == 2
+
+
+@pytest.mark.asyncio
+async def test_cache_incr_sets_expiry_only_on_first_write(monkeypatch):
+    """EXPIRE must use NX, or a steady drip of failures would keep resetting the
+    window and the counter would never age out."""
+    fake = FakeRedis()
+    seen: list = []
+    monkeypatch.setattr(cache, "_redis", fake)
+
+    real_pipeline = fake.pipeline
+
+    def recording_pipeline():
+        pipe = real_pipeline()
+        original_expire = pipe.expire
+
+        def expire(key, ttl, nx=False):
+            seen.append((key, ttl, nx))
+            return original_expire(key, ttl, nx)
+
+        pipe.expire = expire
+        return pipe
+
+    fake.pipeline = recording_pipeline
+    await cache.cache_incr("k", ttl=3600)
+    assert seen == [("k", 3600, True)]
+
+
+@pytest.mark.asyncio
+async def test_cache_incr_fails_open_without_redis(monkeypatch):
+    """Returning 0 keeps the throttle from locking out every judge if Redis dies."""
+    monkeypatch.setattr(cache, "_redis", None)
+    assert await cache.cache_incr("k", ttl=60) == 0
+
+
+def test_unauthenticated_endpoints_have_no_ip_rate_limit():
+    """An IP limit on these would key on the venue's shared NAT address and lock
+    out everyone after the first few attempts. Login is gated by Turnstile;
+    judge-code redemption throttles failed guesses instead (see judging.py)."""
+    import podium.main  # noqa: F401  — importing registers every router's limits
+
+    marked = limiter._Limiter__marked_for_limiting
+    assert "podium.routers.auth.request_login" not in marked
+    assert "podium.routers.judging.redeem_judge_code" not in marked
+    # Guard against slowapi changing its key format and making the above vacuous.
+    assert "podium.routers.projects.validate_project" in marked
+
+
+def test_request_login_still_requires_turnstile():
+    default = inspect.signature(auth.request_login).parameters["_turnstile"].default
+    assert default.dependency is turnstile.require_turnstile

@@ -29,7 +29,6 @@ from podium.validators.turnstile import require_turnstile
 from sqlalchemy.orm import selectinload
 from sqlalchemy import update
 from podium.db.postgres import MagicLink, User, UserPrivate, get_session, scalar_one_or_none, user_to_private, default_display_name
-from podium.limiter import limiter
 
 router = APIRouter(tags=["auth"])
 
@@ -127,9 +126,10 @@ async def send_magic_link(
 
 
 @router.post("/request-login")
-@limiter.limit("5/minute")
+# Deliberately not IP rate limited. Turnstile is the abuse control here; an IP
+# limit would key on the venue's single NAT address and lock out everyone after
+# the first few sign-ins. See docs/rate-limiting.md.
 async def request_login(
-    request: Request,
     user: UserLoginPayload,
     redirect: Annotated[str, Query()],
     session: Annotated[AsyncSession, Depends(get_session)],

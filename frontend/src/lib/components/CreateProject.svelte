@@ -6,7 +6,7 @@
   import { customInvalidateAll, handleError, withHttpsIfMissing } from "$lib/misc";
   import { asyncClick } from "$lib/actions/asyncClick";
   import Modal from "$lib/components/Modal.svelte";
-  import { isValidItchUrl, isValidGitHubUrl, isValidGitUrl } from "$lib/validation";
+  import { isValidItchUrl, isValidRepoUrl, isValidGitUrl } from "$lib/validation";
   import { authHeaders } from "$lib/user.svelte";
   import { env } from "$env/dynamic/public";
 
@@ -47,11 +47,13 @@
       ? "Demo should be an itch.io game URL (e.g., username.itch.io/game-name)"
       : null
   );
+  // Any host is fine — the backend verifies the ones it can and accepts the
+  // rest — so this only warns when the link isn't shaped like a repo at all.
   let repoWarning = $derived(
-    (selectedEvent?.repo_validation ?? "github") === "github" && project.repo?.trim() && !isValidGitHubUrl(project.repo)
-      ? "Repository should be a GitHub URL"
+    (selectedEvent?.repo_validation ?? "github") === "github" && project.repo?.trim() && !isValidRepoUrl(project.repo)
+      ? "That doesn't look like a repository link — use the repo's main page, e.g. github.com/owner/repo"
       : selectedEvent?.repo_validation === "git" && project.repo?.trim() && !isValidGitUrl(project.repo)
-      ? "Repository should be a GitHub, GitLab, or git-hosted URL"
+      ? "Repository should be on a git host (GitHub, GitLab, Codeberg, Bitbucket, or a self-hosted git domain)"
       : null
   );
 

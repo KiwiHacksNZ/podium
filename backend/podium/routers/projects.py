@@ -32,7 +32,7 @@ from podium.authz import has_admin_permission
 from podium.routers.auth import get_current_user
 from podium.limiter import limiter
 from podium.cache import cache_delete
-from podium.validators import itch, github, CUSTOM_VALIDATORS
+from podium.validators import itch, repo as repo_validator, CUSTOM_VALIDATORS
 from podium.validators.base import ValidationResult
 from podium.constants import (
     BAD_AUTH,
@@ -132,13 +132,13 @@ async def _run_background_validation(project_id: UUID) -> None:
         try:
             # ── repo validation ──────────────────────────────────────────────────
             if event.repo_validation == RepoValidation.GITHUB and project.repo:
-                result = await github.validate(project.repo)
+                result = await repo_validator.validate(project.repo)
                 if not result.valid:
                     all_valid = False
                     if result.message:
                         messages.append(result.message)
             elif event.repo_validation == RepoValidation.GIT and project.repo:
-                result = await github.validate_git_url(project.repo)
+                result = await repo_validator.validate_git_url(project.repo)
                 if not result.valid:
                     all_valid = False
                     if result.message:
