@@ -7,6 +7,8 @@
     toggle: () => void;
     selectable?: boolean;
     rankLabel?: string | null;
+    /** Call to action shown on selectable cards that aren't picked yet. */
+    pickLabel?: string;
   }
   let credits = $state("");
   let loadingCredits = $state(true);
@@ -18,6 +20,7 @@
     toggle,
     selectable = false,
     rankLabel = null,
+    pickLabel = "Tap to vote",
   }: Props = $props();
   onMount(() => {
     const allNames = [
@@ -51,12 +54,14 @@
   onkeydown={selectable ? (e) => e.key === "Enter" && toggle() : null}
   aria-pressed={isSelected}
   disabled={!selectable}
-  class="m-4"
+  class="m-4 text-left {selectable ? 'cursor-pointer group' : ''}"
 >
   <div
     class="card card-sm bg-base-100 rounded transition-transform duration-200 border-solid border-base {isSelected
-      ? 'border-info scale-110 border-2'
-      : ''}"
+      ? 'border-info scale-105 border-4 shadow-lg'
+      : selectable
+        ? 'border-2 border-dashed border-base-content/30 group-hover:border-info group-hover:-translate-y-1'
+        : ''}"
   >
     <figure class="w-full relative">
       <img
@@ -89,15 +94,35 @@
         <p class="break-words text-xs">{credits}</p>
       {/if}
       <div class="card-actions justify-center mt-2">
-        <a href={project.repo} target="_blank" rel="noopener">
+        <!-- stopPropagation: opening a link must not also toggle the vote -->
+        <a
+          href={project.repo}
+          target="_blank"
+          rel="noopener"
+          onclick={(e) => e.stopPropagation()}
+        >
           <div class="btn btn-secondary btn-lg underline">Repo</div>
         </a>
         {#if project.demo}
-          <a href={project.demo} target="_blank" rel="noopener">
+          <a
+            href={project.demo}
+            target="_blank"
+            rel="noopener"
+            onclick={(e) => e.stopPropagation()}
+          >
             <div class="btn btn-primary btn-lg underline">Demo</div>
           </a>
         {/if}
       </div>
     </div>
+    {#if selectable}
+      <div
+        class="rounded-b px-4 py-3 text-center font-extrabold uppercase tracking-wide text-sm {isSelected
+          ? 'bg-info text-info-content'
+          : 'bg-base-200 group-hover:bg-info group-hover:text-info-content'}"
+      >
+        {isSelected ? `✓ ${rankLabel ?? "Picked"} · tap to remove` : pickLabel}
+      </div>
+    {/if}
   </div>
 </button>
