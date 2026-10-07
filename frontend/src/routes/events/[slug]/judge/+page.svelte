@@ -1,6 +1,7 @@
 <svelte:options runes />
 
 <script lang="ts">
+  import { onMount } from "svelte";
   import { toast } from "svelte-sonner";
   import { client } from "$lib/client/sdk.gen";
   import StarRating from "$lib/components/StarRating.svelte";
@@ -52,9 +53,10 @@
     ),
   );
 
-  // Snapshot on mount: a fresh load remounts the page, so this never goes stale.
+  // Seeded from the load, then topped up by polling: projects submitted after a
+  // judge opened this page must still reach them, or they go unscored.
   // svelte-ignore state_referenced_locally
-  const projects: JudgeProject[] = data.projects;
+  let projects = $state<JudgeProject[]>(data.projects);
 
   function toDraft(score: JudgeScore | null): Draft {
     return {
@@ -65,9 +67,12 @@
     };
   }
 
+  // Seeded once; refreshProjects() adds entries for projects that arrive later.
+  // svelte-ignore state_referenced_locally
   let drafts = $state<Record<string, Draft>>(
     Object.fromEntries(projects.map((p) => [p.id, toDraft(p.my_score)])),
   );
+  // svelte-ignore state_referenced_locally
   let stored = $state<Record<string, Draft>>(
     Object.fromEntries(projects.map((p) => [p.id, toDraft(p.my_score)])),
   );
@@ -99,35 +104,88 @@
   // the judge asks to go back and change something.
   let reviewing = $state(false);
 
+  let saving = $state(false);
+  let saveFailed = $state(false);
+
   /** Returns false if the score could not be stored. `silent` suppresses the
-      toast, used when saving happens as a side effect of navigating. */
-  async function persist(silent: boolean): Promise<boolean> {
-    if (!project || !draft) return false;
-    if (!complete) {
+      success toast, used for autosave and saving on navigation. */
+  async function persist(target: JudgeProject, silent: boolean): Promise<boolean> {
+    const d = drafts[target.id];
+    if (!isComplete(d)) {
       if (!silent) toast.error("Set all four criteria before saving");
       return false;
     }
+    const sent = { ...d };
+    saving = true;
     const { error: saveError } = await client.put<JudgeScore, unknown>({
-      url: `/judging/${data.event.id}/scores/${project.id}`,
-      body: {
-        originality: draft.originality,
-        technicality: draft.technicality,
-        theme: draft.theme,
-        usability: draft.usability,
-      },
+      url: `/judging/${data.event.id}/scores/${target.id}`,
+      body: sent,
       throwOnError: false,
     });
+    saving = false;
     if (saveError) {
+      saveFailed = true;
       handleError(saveError);
       return false;
     }
-    stored[project.id] = { ...draft };
-    if (!silent) toast.success(`Saved your grades for ${project.name}`);
+    saveFailed = false;
+    stored[target.id] = sent;
+    if (!silent) toast.success(`Saved your grades for ${target.name}`);
     return true;
   }
 
   async function save() {
-    await persist(false);
+    if (project) await persist(project, false);
+  }
+
+  // Autosave: once all four criteria are set, any change is saved shortly after
+  // the judge stops tapping, so there is no Save step to forget.
+  let autosaveTimer: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => {
+    if (!project || !complete || !dirty) return;
+    const target = project;
+    // Read every criterion so the effect re-runs on each tap.
+    criteria.forEach((c) => draft?.[c.key]);
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+      // Stay on the grading screen: jumping to "Thanks!" mid-tap would yank the
+      // judge away while they're still adjusting the last project.
+      reviewing = true;
+      persist(target, true);
+    }, 600);
+    return () => clearTimeout(autosaveTimer);
+  });
+
+  async function refreshProjects() {
+    const { data: fresh, response } = await client.get<
+      { projects: JudgeProject[] },
+      unknown
+    >({ url: `/judging/${data.event.id}/projects`, throwOnError: false });
+    // Judging closed or access revoked: nothing more will arrive.
+    if (response?.status === 403) return;
+    if (!fresh) return;
+    const known = new Set(projects.map((p) => p.id));
+    const added = fresh.projects.filter((p) => !known.has(p.id));
+    if (added.length === 0) return;
+    for (const p of added) {
+      drafts[p.id] = toDraft(p.my_score);
+      stored[p.id] = toDraft(p.my_score);
+    }
+    // Append rather than re-sort so the project on screen keeps its index.
+    projects = [...projects, ...added];
+    toast.info(
+      `${added.length} new project${added.length === 1 ? "" : "s"} to judge`,
+    );
+  }
+  onMount(() => {
+    const poll = setInterval(refreshProjects, 20_000);
+    return () => clearInterval(poll);
+  });
+
+  /** Jump straight to a project from the review list. */
+  async function edit(projectId: string) {
+    reviewing = true;
+    await goTo(projects.findIndex((p) => p.id === projectId));
   }
 
   /** Move to a project, saving a complete-but-unsaved score on the way out so a
@@ -135,7 +193,10 @@
       alone — skipping a project is allowed. */
   async function goTo(target: number) {
     if (target < 0 || target >= projects.length || target === index) return;
-    if (complete && dirty && !(await persist(true))) return;
+    if (project && complete && dirty) {
+      clearTimeout(autosaveTimer);
+      if (!(await persist(project, true))) return;
+    }
     index = target;
   }
 
@@ -177,12 +238,34 @@
         {projects.length === 1 ? "project" : "projects"} for {data.event.name}.
         Your scores are saved — nothing else to do.
       </p>
-      <button
-        class="btn btn-sm mt-6 bg-success-content text-success border-none"
-        onclick={() => (reviewing = true)}
-      >
-        Review my grades
-      </button>
+    </section>
+
+    <section class="mt-6 rounded-box bg-base-200 p-5 sm:p-6">
+      <h2 class="text-xl font-extrabold">Change a grade</h2>
+      <p class="mt-1 text-sm opacity-70">
+        Tap a project to edit it. Changes save automatically.
+      </p>
+      <ul class="mt-4 flex flex-col gap-2">
+        {#each projects as p (p.id)}
+          <li>
+            <button
+              type="button"
+              class="btn btn-block justify-between h-auto py-3 normal-case"
+              onclick={() => edit(p.id)}
+            >
+              <span class="font-bold text-left break-words">{p.name}</span>
+              <span class="flex items-center gap-3 whitespace-nowrap">
+                {#if stored[p.id]}
+                  <span class="opacity-70"
+                    >{criteria.reduce((sum, c) => sum + (stored[p.id][c.key] ?? 0), 0)}/40</span
+                  >
+                {/if}
+                <span class="link link-primary">Edit</span>
+              </span>
+            </button>
+          </li>
+        {/each}
+      </ul>
     </section>
   </div>
 {:else}
@@ -281,18 +364,30 @@
       </span>
       {#if !complete}
         <span class="badge badge-warning">Score all four criteria</span>
-      {:else if dirty}
-        <span class="badge badge-warning">Unsaved changes</span>
+      {:else if dirty || saving}
+        <span class="badge badge-info">Saving…</span>
       {:else}
         <span class="badge badge-success">Saved</span>
       {/if}
     </div>
 
-    <button
-      class="btn btn-primary btn-block"
-      disabled={!complete || !dirty}
-      use:asyncClick={save}>Save score</button
-    >
+    {#if allScored}
+      <button
+        class="btn btn-success btn-block"
+        onclick={() => (reviewing = false)}>All scored — finish</button
+      >
+    {/if}
+
+    <p class="text-xs opacity-70 -mt-3">
+      Grades save automatically once all four are set. You can come back and
+      change them any time while judging is open.
+    </p>
+    <!-- Manual fallback if an autosave failed (e.g. flaky venue wifi). -->
+    {#if saveFailed && complete && dirty && !saving}
+      <button class="btn btn-primary btn-block" use:asyncClick={save}
+        >Retry save</button
+      >
+    {/if}
 
     <div class="join grid grid-cols-2">
       <button

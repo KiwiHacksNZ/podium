@@ -120,16 +120,7 @@ class Event(SQLModel, table=True):
     @computed_field
     @property
     def max_votes_per_user(self) -> int:
-        """Ballot size. Once finalists are locked in, attendees rank up to MAX_RANK of
-        them; before that it scales with project count."""
-        finalists = self.finalist_count
-        if finalists:
-            return min(MAX_RANK, finalists)
-        count = len(self.projects) if self.projects else 0
-        if count < 4:
-            return 1
-        if count < 20:
-            return 2
+        """Ballot size: every attendee ranks up to MAX_RANK projects."""
         return MAX_RANK
 
     @computed_field

@@ -36,6 +36,13 @@
     return index === -1 ? null : `${ordinal(index)} choice`;
   }
 
+  const picksLeft = $derived(data.toSelect - selectedProjects.length);
+  const pickLabel = $derived(
+    picksLeft > 0
+      ? `Tap to vote ${ordinal(selectedProjects.length)}`
+      : "Ballot full",
+  );
+
   const selectedInOrder = $derived(
     selectedProjects
       .map((id) => data.projects.find((p) => p.id === id))
@@ -50,6 +57,8 @@
     } else {
       if (selectedProjects.length < data.toSelect) {
         selectedProjects = [...selectedProjects, projectId];
+      } else {
+        toast.info("Your ballot is full. Tap a pick to remove it first.");
       }
     }
   }
@@ -127,6 +136,7 @@
           toggle={() => toggleProjectSelection(project.id)}
           selectable={true}
           rankLabel={rankLabelFor(project.id)}
+          {pickLabel}
         />
       {/each}
     </div>
@@ -170,8 +180,22 @@
     </section>
 
     <!-- Not disabling if user has already voted since this is hidden then anyway. Also not disabling if projects is under toSelect since people can come back. -->
-    <button class="btn-block btn btn-primary" use:asyncClick={submitVote}
-      >Submit vote</button
+    <!-- Sticky so the pick count and submit stay in reach while scrolling cards. -->
+    <div
+      class="sticky bottom-0 z-20 -mx-4 sm:mx-0 bg-base-100/95 backdrop-blur px-4 py-3 border-t border-base-300 flex items-center gap-3"
     >
+      <span class="font-bold text-sm grow">
+        {#if picksLeft > 0}
+          {picksLeft} pick{picksLeft === 1 ? "" : "s"} left
+        {:else}
+          Ballot ready
+        {/if}
+      </span>
+      <button
+        class="btn btn-primary"
+        disabled={selectedProjects.length === 0}
+        use:asyncClick={submitVote}>Submit vote</button
+      >
+    </div>
   </div>
 {/if}

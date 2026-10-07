@@ -23,7 +23,11 @@
 
   let saving = $state(false);
 
-  async function setRound(round: "judging_open" | "voting_open", open: boolean) {
+  async function setRound(
+    round: "judging_open" | "voting_open",
+    toggle: HTMLInputElement,
+  ) {
+    const open = toggle.checked;
     if (saving) return;
     saving = true;
     const { data, error } =
@@ -34,6 +38,9 @@
       });
     if (error) {
       handleError(error);
+      // Snap the toggle back: the browser already flipped it on tap, and the
+      // state didn't change so Svelte won't re-render it.
+      toggle.checked = !open;
     } else if (data) {
       judgingOpen = data.judging_open;
       votingOpen = data.voting_open;
@@ -62,7 +69,7 @@
           disabled={saving}
           checked={judgingOpen}
           onchange={(e) =>
-            setRound("judging_open", e.currentTarget.checked)}
+            setRound("judging_open", e.currentTarget)}
         />
         <span>
           <span class="font-medium">Judge scoring</span>
@@ -78,7 +85,7 @@
           class="toggle toggle-primary"
           disabled={saving}
           checked={votingOpen}
-          onchange={(e) => setRound("voting_open", e.currentTarget.checked)}
+          onchange={(e) => setRound("voting_open", e.currentTarget)}
         />
         <span>
           <span class="font-medium">Attendee voting</span>

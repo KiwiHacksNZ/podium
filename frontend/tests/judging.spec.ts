@@ -99,12 +99,7 @@ test.describe('Judging round', () => {
 				['Theme', 9],
 				['Usability', 10]
 			];
-			for (const [criterion, value] of scores) {
-				await judgePage
-					.getByRole('radio', { name: `${value} out of 10 for ${criterion}` })
-					.check();
-			}
-
+			// Grades autosave once all four criteria are set — no Save button.
 			const saved = judgePage.waitForResponse(
 				(r) =>
 					r.url().includes(`/judging/${event.id}/scores/`) &&
@@ -112,18 +107,19 @@ test.describe('Judging round', () => {
 					r.ok(),
 				{ timeout: 15000 }
 			);
-			await judgePage.getByRole('button', { name: 'Save score' }).click();
+			for (const [criterion, value] of scores) {
+				await judgePage
+					.getByRole('radio', { name: `${value} out of 10 for ${criterion}` })
+					.check();
+			}
 			await saved;
-			await expect(judgePage.getByText(`Saved your grades for ${projectName}`)).toBeVisible({
-				timeout: 10000
-			});
 
 			await judgePage.reload();
 			// Every project is scored now, so the thank-you replaces the grading UI
 			await expect(judgePage.getByRole('heading', { name: 'Thanks!' })).toBeVisible({
 				timeout: 15000
 			});
-			await judgePage.getByRole('button', { name: 'Review my grades' }).click();
+			await judgePage.getByRole('button', { name: new RegExp(`${projectName}.*Edit`) }).click();
 			for (const [criterion, value] of scores) {
 				await expect(
 					judgePage.getByRole('radio', { name: `${value} out of 10 for ${criterion}` })

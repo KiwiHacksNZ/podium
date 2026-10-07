@@ -153,7 +153,17 @@ async def update_event_admin(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> EventPrivate:
     """Update an event you own. Only fields provided in the body are changed."""
-    event = await get_owned_event(event_id, user, session)
+    event = await get_owned_event(event_id, user, session, selectinload(Event.judges))
+
+    # Opening voting before finalists are locked puts every project on the ballot,
+    # and the first vote cast then blocks locking finalists for good. Events run
+    # without judges have no finalists to wait for.
+    if update.voting_open and not event.voting_open:
+        if event.judges and event.finalist_count == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Lock in finalists before opening attendee voting",
+            )
 
     for field, value in update.model_dump(exclude_unset=True).items():
         setattr(event, field, value)
