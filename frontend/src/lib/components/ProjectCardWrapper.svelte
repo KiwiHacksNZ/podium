@@ -177,7 +177,7 @@
       {#if eventName}
         <a
           href={`/events/${eventSlug}`}
-          class="link link-hover text-xs font-semibold uppercase tracking-wide text-base-content/60"
+          class="link link-hover text-sm text-base-content/60"
           data-sveltekit-noscroll
         >
           {eventName}
@@ -227,7 +227,7 @@
 
     {#if (isOwner || currentCollaborator) && collaboratorEntries.length > 0}
       <div class="border-t border-base-content/10 pt-3">
-        <p class="text-xs font-semibold uppercase tracking-wide text-base-content/55">Team</p>
+        <p class="text-sm font-semibold text-base-content/70">Team</p>
         <div class="mt-2 space-y-2">
           {#each collaboratorEntries as collaborator}
             <div class="flex items-center justify-between gap-2">

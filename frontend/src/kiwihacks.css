@@ -82,6 +82,11 @@
   margin-left: -0.2rem;
 }
 
+[data-theme="kiwihacks"] #sidebar-top .sidebar-brand-name {
+  font-family: "ABeeZee", "Figtree", sans-serif;
+  color: var(--kh-ink);
+}
+
 [data-theme="kiwihacks"] #sidebar-top .sidebar-brand-subtitle {
   margin: 0;
 }

@@ -293,13 +293,8 @@
         <div class="min-h-full w-72 bg-base-200 flex flex-col" id="sidebar-ui">
           <!-- Logo/Header -->
           <div class="px-5 py-4 border-b border-base-300" id="sidebar-top">
-            <a href="/" class="sidebar-brand-link flex items-center gap-2">
-              <img
-                src="/assets/kiwihacks/kiwi-text.png"
-                alt="KiwiHacks"
-                class="sidebar-brand-logo h-8 w-auto"
-              />
-              <span class="sidebar-brand-subtitle badge badge-sm shrink-0">Podium</span>
+            <a href="/" class="sidebar-brand-link">
+              <span class="sidebar-brand-name text-2xl">Podium</span>
             </a>
           </div>
 
@@ -309,7 +304,7 @@
               {#if items.length > 0}
                 <nav>
                   {#if groupIndex === 1}
-                    <p class="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-base-content/50">
+                    <p class="px-3 pb-1 text-sm font-semibold text-base-content/60">
                       Organiser
                     </p>
                   {/if}
@@ -349,7 +344,7 @@
             {#if sidebarEvent}
               {@const status = eventStatus(sidebarEvent)}
               <a href="/events/{sidebarEvent.slug}" class="card bg-base-100 mt-auto p-3 gap-1" id="sidebar-event">
-                <span class="text-xs font-semibold uppercase tracking-wide text-base-content/50">Your event</span>
+                <span class="text-sm text-base-content/60">Your event</span>
                 <span class="font-semibold leading-tight">{sidebarEvent.name}</span>
                 <span class="badge badge-sm {status.badge}">{status.label}</span>
               </a>

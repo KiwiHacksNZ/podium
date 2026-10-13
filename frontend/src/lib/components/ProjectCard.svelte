@@ -132,7 +132,7 @@
     </div>
     {#if selectable}
       <div
-        class="border-t border-base-content/10 px-4 py-3 text-center font-extrabold uppercase tracking-wide text-sm {isSelected
+        class="border-t border-base-content/10 px-4 py-3 text-center font-extrabold text-sm {isSelected
           ? 'bg-info text-info-content'
           : 'bg-base-200 group-hover:bg-info group-hover:text-info-content'}"
       >

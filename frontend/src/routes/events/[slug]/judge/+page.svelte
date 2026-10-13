@@ -248,7 +248,7 @@
       class="rounded-box bg-success text-success-content p-8 text-center"
     >
       <span
-        class="inline-flex items-center rounded-full bg-success-content text-success px-3 py-1 text-sm font-extrabold uppercase tracking-wide"
+        class="inline-flex items-center rounded-full bg-success-content text-success px-3 py-1 text-sm font-extrabold"
       >
         All done
       </span>
@@ -379,7 +379,7 @@
       {#each criteria as criterion (criterion.key)}
         <section class="judge-criterion-card rounded-box p-5 sm:p-6">
           <span
-            class="judge-criterion-pill inline-flex items-center rounded-full px-3 py-1 text-sm font-extrabold uppercase tracking-wide"
+            class="judge-criterion-pill inline-flex items-center rounded-full px-3 py-1 text-sm font-extrabold"
           >
             {criterion.name}
           </span>
