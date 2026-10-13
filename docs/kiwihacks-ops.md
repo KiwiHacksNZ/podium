@@ -67,14 +67,20 @@ vercel --prod --yes
 
 ## Deploy Backend (Podium)
 
-```bash
-ssh -o StrictHostKeyChecking=accept-new <ssh-user>@<backend-host>
-cd <repo-path-on-server>
-docker compose up -d --build podium-backend
-```
+Production runs on the KiwiHacks VPS as the Portainer stack `kiwihacks-podium`, a
+git stack that tracks `main` and builds the backend from `backend/` using
+`docker-compose.portainer.yml`. It does not use the GHCR image; the GitHub
+publish workflow is only a test gate, so wait for it to pass before redeploying.
+
+To deploy, redeploy the stack in Portainer with **re-pull image** turned on.
+Without re-pull, Portainer reuses the existing backend image and nothing changes.
 
 The backend runs `alembic upgrade head` before starting. The host uploads
 directory must be writable by container UID `1000`.
+
+If the Portainer UI can't load the stack, the `portainer-redeploy` container
+holds an API key and can redeploy it through Portainer's API
+(`PUT /api/stacks/<id>/git/redeploy` with `pullImage: true`).
 
 ## Check Backend Health
 
@@ -115,5 +121,15 @@ PY
 ## Common Failures
 
 - `502` from backend domain: backend container down or reverse-proxy route issue.
+- `502` straight after a redeploy: Portainer can stall partway through and leave
+  containers created but not started (`docker ps -a` shows `Created`), sometimes
+  including Postgres. Start them in order on the VPS:
+  `docker start kiwihacks-podium-podium-pg-1 kiwihacks-podium-podium-redis-1 kiwihacks-podium-podium-backend-1`.
+  Data lives in the Postgres volume and survives container recreation.
+- `portainer-redeploy` can't reach Portainer (`ENOTFOUND portainer`): Portainer was
+  recreated without the `portainer-net` network. Fix with
+  `docker network connect portainer-net portainer`.
+- Pin the Portainer image to a version rather than `:latest`; a self-upgrade
+  mid-deploy is what causes the stalls above.
 - Magic link says sent but no email arrives: missing `PODIUM_LOOPS_API_KEY` or wrong `PODIUM_LOOPS_TRANSACTIONAL_ID`.
 - OAuth button present but fails: missing `PODIUM_SSO_CLIENT_ID/SECRET` or callback URL mismatch.
