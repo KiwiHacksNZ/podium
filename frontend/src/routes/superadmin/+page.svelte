@@ -117,6 +117,7 @@
   let editCustomValidator = $state("");
   let editRequireYswsPii = $state(false);
   let editRequireAi = $state(false);
+  let editIsPast = $state(false);
   let editSeries = $state("");
   let editFeatureFlags = $state("");
   let saving = $state(false);
@@ -176,6 +177,7 @@
     editCustomValidator = event.custom_validator ?? "";
     editRequireYswsPii = event.require_ysws_pii;
     editRequireAi = event.require_ai_declaration;
+    editIsPast = event.is_past;
     editFeatureFlags = event.feature_flags_csv ?? "";
     editSeries = seriesOf(event.feature_flags_csv);
   }
@@ -192,6 +194,7 @@
     if (newCustom !== (editing.custom_validator ?? null)) body.custom_validator = newCustom;
     if (editRequireYswsPii !== editing.require_ysws_pii) body.require_ysws_pii = editRequireYswsPii;
     if (editRequireAi !== editing.require_ai_declaration) body.require_ai_declaration = editRequireAi;
+    if (editIsPast !== editing.is_past) body.is_past = editIsPast;
     if (editFeatureFlags !== (editing.feature_flags_csv ?? "")) body.feature_flags_csv = editFeatureFlags;
 
     if (Object.keys(body).length > 0) {
@@ -407,6 +410,9 @@
                     {:else}
                       <span class="line-through">{event.name}</span>
                     {/if}
+                    {#if event.is_past}
+                      <span class="badge badge-ghost badge-sm ml-1">Past</span>
+                    {/if}
                     {#if !group.slug && event.feature_flags_csv}
                       <span class="block font-mono text-xs opacity-60">{event.feature_flags_csv}</span>
                     {/if}
@@ -479,6 +485,10 @@
                             <label class="flex items-center gap-2 cursor-pointer">
                               <input type="checkbox" class="checkbox checkbox-sm" bind:checked={editRequireAi} />
                               <span class="label-text">Require AI declaration (30% AI code limit)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                              <input type="checkbox" class="checkbox checkbox-sm" bind:checked={editIsPast} />
+                              <span class="label-text">Past event (moves it to /past-events)</span>
                             </label>
                           </div>
                           <div class="flex gap-2">
