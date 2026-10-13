@@ -310,14 +310,14 @@
   color: #fff2f2;
 }
 
-/* kiwihacks.com: page and section titles in bold Source Code Pro, smaller
-   headings (card titles) in bold Figtree */
+/* Page and section titles in ABeeZee; smaller headings (card titles) in
+   bold Figtree */
 [data-theme="kiwihacks"] h1,
 [data-theme="kiwihacks"] h2 {
   color: var(--kh-ink);
-  font-family: "Source Code Pro", monospace;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-family: "ABeeZee", "Figtree", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
 }
 
 [data-theme="kiwihacks"] h3,
