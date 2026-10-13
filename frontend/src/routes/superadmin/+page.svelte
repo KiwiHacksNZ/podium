@@ -231,7 +231,7 @@
     exportingProjectsEventId = event.id;
     try {
       const response = await fetch(`${env.PUBLIC_API_URL}/superadmin/events/${event.id}/projects/csv`, {
-        headers: { ...authHeaders(), "ngrok-skip-browser-warning": "hi" },
+        headers: authHeaders(),
         credentials: "include",
       });
 
