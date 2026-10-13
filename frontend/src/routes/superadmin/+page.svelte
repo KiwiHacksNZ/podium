@@ -112,6 +112,23 @@
   let newSeries = $state("");
   let newDesc = $state("");
   let newPhase = $state("draft");
+  let newSlug = $state("");
+
+  /** Preview of the server's slug clean-up: "KiwiHacks 26!" -> "kiwihacks-26" */
+  function previewSlug(value: string): string {
+    return value
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 50);
+  }
+
+  function errorDetail(error: unknown, fallback: string): string {
+    const detail = (error as { detail?: unknown })?.detail;
+    return typeof detail === "string" ? detail : fallback;
+  }
   let creating = $state(false);
 
   // Edit state
@@ -124,6 +141,7 @@
   let editRequireAi = $state(false);
   let editIsPast = $state(false);
   let editSeries = $state("");
+  let editSlug = $state("");
   let editFeatureFlags = $state("");
   let saving = $state(false);
   let exportingProjectsEventId = $state<string | null>(null);
@@ -164,13 +182,19 @@
     if (!newName.trim()) return;
     creating = true;
     const { data, error } = await SuperadminService.createEventSuperadminEventsPost({
-      body: { name: newName.trim(), description: newDesc.trim(), phase: newPhase, feature_flags_csv: newSeries },
+      body: {
+        name: newName.trim(),
+        description: newDesc.trim(),
+        phase: newPhase,
+        feature_flags_csv: newSeries,
+        slug: newSlug.trim() || null,
+      },
       throwOnError: false,
     });
     creating = false;
-    if (error) { toast.error("Failed to create event"); return; }
-    toast.success(`Event "${data!.name}" created`);
-    newName = ""; newDesc = ""; newPhase = "draft";
+    if (error) { toast.error(errorDetail(error, "Failed to create event")); return; }
+    toast.success(`Event "${data!.name}" created at /events/${data!.slug}`);
+    newName = ""; newDesc = ""; newPhase = "draft"; newSlug = "";
     await loadEvents(1);
   }
 
@@ -185,6 +209,7 @@
     editIsPast = event.is_past;
     editFeatureFlags = event.feature_flags_csv ?? "";
     editSeries = seriesOf(event.feature_flags_csv);
+    editSlug = event.slug;
   }
 
   async function saveEdit() {
@@ -201,6 +226,13 @@
     if (editRequireAi !== editing.require_ai_declaration) body.require_ai_declaration = editRequireAi;
     if (editIsPast !== editing.is_past) body.is_past = editIsPast;
     if (editFeatureFlags !== (editing.feature_flags_csv ?? "")) body.feature_flags_csv = editFeatureFlags;
+    if (editSlug.trim() && previewSlug(editSlug) !== editing.slug) {
+      if (!confirm(`Change the URL to /events/${previewSlug(editSlug)}? Old links to /events/${editing.slug} will stop working.`)) {
+        saving = false;
+        return;
+      }
+      body.slug = editSlug.trim();
+    }
 
     if (Object.keys(body).length > 0) {
       const { error } = await client.patch<EventPrivate, unknown>({
@@ -208,7 +240,7 @@
         body,
         throwOnError: false,
       });
-      if (error) { toast.error("Save failed"); saving = false; return; }
+      if (error) { toast.error(errorDetail(error, "Save failed")); saving = false; return; }
     }
     toast.success("Event updated");
     editing = null;
@@ -364,6 +396,10 @@
       <div class="flex flex-wrap gap-3">
         <input class="input input-bordered flex-1 min-w-48" placeholder="Event name" bind:value={newName} />
         <input class="input input-bordered flex-1 min-w-48" placeholder="Description" bind:value={newDesc} />
+        <label class="input input-bordered flex min-w-56 flex-1 items-center gap-1" title="Optional custom URL">
+          <span class="text-sm text-base-content/50">/events/</span>
+          <input class="grow" placeholder="custom-url (optional)" bind:value={newSlug} />
+        </label>
         <select class="select select-bordered" bind:value={newPhase}>
           {#each phases as p}<option value={p}>{p}</option>{/each}
         </select>
@@ -456,6 +492,16 @@
                         <div class="card-body gap-3 py-4">
                           <h3 class="font-semibold">Edit: {editing.name}</h3>
                           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label class="form-control flex flex-col sm:col-span-2">
+                              <span class="label-text mb-1">URL</span>
+                              <span class="input input-bordered input-sm flex items-center gap-1">
+                                <span class="text-base-content/50">/events/</span>
+                                <input class="grow" bind:value={editSlug} />
+                              </span>
+                              {#if editSlug.trim() && previewSlug(editSlug) !== editSlug.trim()}
+                                <span class="mt-1 text-xs text-base-content/60">Will be saved as /events/{previewSlug(editSlug)}</span>
+                              {/if}
+                            </label>
                             <label class="form-control flex flex-col">
                               <span class="label-text mb-1">Owner email</span>
                               <input class="input input-bordered input-sm" bind:value={editOwnerEmail} />

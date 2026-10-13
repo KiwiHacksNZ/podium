@@ -24,12 +24,12 @@ from pydantic import ConfigDict
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
-from secrets import token_urlsafe
 from slugify import slugify
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from podium.db.postgres.queries import resolve_event_slug
 from podium.db.postgres import (
     User,
     Event,
@@ -66,11 +66,15 @@ class EventCreate(BaseModel):
     demo_validation: str = "none"
     custom_validator: str | None = None
     feature_flags_csv: str = ""
+    # Custom URL slug; generated from the name when omitted
+    slug: str | None = None
 
 
 class SuperadminEventUpdate(EventUpdate):
     """EventUpdate extended with superadmin-only fields."""
     owner_email: str | None = None
+    # Changing the slug changes the event's URL; old links stop working
+    slug: str | None = None
 
 
 class UserSummary(BaseModel):
@@ -117,11 +121,13 @@ async def create_event(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> EventPrivate:
     """Create a real event as the requesting superadmin user."""
-    base_slug = slugify(event_data.name)[:40] or "event"
-    slug = f"{base_slug}-{token_urlsafe(4)}"
+    try:
+        slug = await resolve_event_slug(session, event_data.slug, event_data.name)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     event = Event(
-        **event_data.model_dump(),
+        **event_data.model_dump(exclude={"slug"}),
         slug=slug,
         owner_id=user.id,
     )
@@ -172,6 +178,14 @@ async def update_event(
         if not new_owner:
             raise HTTPException(status_code=404, detail=f"User '{owner_email}' not found")
         event.owner_id = new_owner.id
+
+    if "slug" in data:
+        try:
+            event.slug = await resolve_event_slug(
+                session, data.pop("slug") or event.slug, event.name, exclude_event_id=event.id
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
     for field, value in data.items():
         setattr(event, field, value)

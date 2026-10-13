@@ -11,20 +11,19 @@ Default admin capabilities include:
 import csv
 from datetime import UTC, datetime
 from io import StringIO
-from secrets import token_urlsafe
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Response
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-from slugify import slugify
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from podium.authz import require_admin_permission
 from podium.constants import EventPhase, PlatformAdminPermission
+from podium.db.postgres.queries import resolve_event_slug
 from podium.db.postgres import (
     Event,
     EventPrivate,
@@ -50,6 +49,8 @@ class EventCreate(BaseModel):
     demo_validation: str = "none"
     custom_validator: str | None = None
     feature_flags_csv: str = ""
+    # Custom URL slug; generated from the name when omitted
+    slug: str | None = None
 
 
 async def _get_event_or_404(session: AsyncSession, event_id: UUID) -> Event:
@@ -244,11 +245,13 @@ async def create_event(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> EventPrivate:
     """Create a real event (admin permission: create_events)."""
-    base_slug = slugify(event_data.name)[:40] or "event"
-    slug = f"{base_slug}-{token_urlsafe(4)}"
+    try:
+        slug = await resolve_event_slug(session, event_data.slug, event_data.name)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     event = Event(
-        **event_data.model_dump(),
+        **event_data.model_dump(exclude={"slug"}),
         slug=slug,
         owner_id=user.id,
     )
