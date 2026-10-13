@@ -44,85 +44,93 @@
     !!getAuthenticatedUser().user.judge_event_ids?.includes(data.event.id),
   );
   const finalistCount = $derived(data.event.finalist_count ?? 0);
+
+  const accents = {
+    primary: { border: "hover:border-primary/60", text: "text-primary" },
+    secondary: { border: "hover:border-secondary/60", text: "text-secondary" },
+    accent: { border: "hover:border-accent/60", text: "text-accent" },
+    info: { border: "hover:border-info/60", text: "text-info" },
+  };
 </script>
 
-<div class="flex justify-center flex-col mx-auto max-w-md space-y-4 mt-4">
-  {#if data.event.judging_open && isJudge}
-    <div class="tooltip" data-tip="Score every project on all four criteria">
-      <a
-        href={`/events/${data.event.slug}/judge`}
-        class="btn-accent btn btn-block">Judge Projects</a
-      >
+<!-- Full class names so Tailwind can see them -->
+{#snippet action(href: string, title: string, blurb: string, enabled: boolean, accent: keyof typeof accents)}
+  {#if enabled}
+    <a {href} class="card border border-base-content/10 bg-base-100 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md {accents[accent].border}">
+      <div class="card-body gap-1 p-5">
+        <span class="flex items-center justify-between gap-2">
+          <span class="text-lg font-bold">{title}</span>
+          <span class={accents[accent].text} aria-hidden="true">&rarr;</span>
+        </span>
+        <span class="text-sm text-base-content/70">{blurb}</span>
+      </div>
+    </a>
+  {:else}
+    <div class="card border border-dashed border-base-content/15 bg-base-100/40" aria-disabled="true">
+      <div class="card-body gap-1 p-5">
+        <span class="text-lg font-bold text-base-content/50">{title}</span>
+        <span class="text-sm text-base-content/50">{blurb}</span>
+      </div>
     </div>
+  {/if}
+{/snippet}
+
+<div class="mx-auto mt-2 grid max-w-3xl grid-cols-1 gap-4 px-4 sm:grid-cols-2">
+  {#if data.event.judging_open && isJudge}
+    {@render action(
+      `/events/${data.event.slug}/judge`,
+      "Judge projects",
+      "Score every project on all four criteria.",
+      true,
+      "accent",
+    )}
   {/if}
   {#if data.event.partOfEvent}
-    <div
-      class="tooltip"
-      data-tip={data.event.voting_open
+    {@render action(
+      `/events/${data.event.slug}/rank`,
+      finalistCount > 0 ? "Rank the finalists" : "Vote",
+      data.event.voting_open
         ? finalistCount > 0
-          ? "Rank the finalists chosen by the judges"
-          : "Vote for your favorite projects"
-        : "You can't vote yet! If you think you should be able to, contact your event organizer."}
-    >
-      <a
-        href={`/events/${data.event.slug}/rank`}
-        class="btn-primary btn btn-block {data.event.voting_open
-          ? ''
-          : 'btn-disabled'}"
-        >{data.event.voting_open && finalistCount > 0
-          ? "Rank Finalists"
-          : "Rank Projects"}</a
-      >
-    </div>
+          ? `Pick your top 3 of the ${finalistCount} finalists.`
+          : "Pick your top 3 projects."
+        : "Voting isn't open yet. Your organisers will open it.",
+      data.event.voting_open,
+      "primary",
+    )}
   {/if}
-  <a
-    href={`/events/${data.event.slug}/showcase`}
-    class="btn-secondary btn btn-block">Showcase</a
-  >
+  {@render action(
+    `/events/${data.event.slug}/showcase`,
+    "Showcase",
+    "Browse every project built at this event.",
+    true,
+    "secondary",
+  )}
   {#if !data.event.owned}
-    <div
-      class="tooltip"
-      data-tip={data.event.phase === "closed"
-        ? "View the leaderboard"
-        : "Results will be available after voting closes."}
-    >
-      <a
-        href={`/events/${data.event.slug}/leaderboard`}
-        class="btn-primary btn btn-block {data.event.phase === 'closed'
-          ? ''
-          : 'btn-disabled'}">Leaderboard</a
-      >
-    </div>
+    {@render action(
+      `/events/${data.event.slug}/leaderboard`,
+      "Leaderboard",
+      data.event.phase === "closed"
+        ? "See the final results."
+        : "Results appear here once voting closes.",
+      data.event.phase === "closed",
+      "info",
+    )}
   {/if}
 
   {#if !data.event.partOfEvent && !data.event.owned}
-    <div class="divider"></div>
-    <div class="card bg-base-200 text-center">
-      <div class="card-body gap-2 py-4">
+    <div class="card bg-base-200 text-center sm:col-span-2">
+      <div class="card-body items-center gap-2 py-5">
         {#if isAuthed}
-          <!-- Authenticated but not attending: let them join inline -->
-          <p class="text-base-content/70 text-sm">
-            You're not attending this event yet.
-          </p>
-          <button
-            class="btn btn-primary btn-sm"
-            onclick={joinEvent}
-            disabled={joining}
-          >
+          <p class="text-base-content/70 text-sm">You're not attending this event yet.</p>
+          <button class="btn btn-primary btn-sm" onclick={joinEvent} disabled={joining}>
             {#if joining}
               <span class="loading loading-spinner loading-xs"></span>
             {/if}
             Join this event
           </button>
         {:else}
-          <!-- Unauthenticated: redirect to login with return URL -->
-          <p class="text-base-content/70 text-sm">
-            Want to submit a project or vote?
-          </p>
-          <a
-            href="/login?redirect=/events/{data.event.slug}"
-            class="btn btn-primary btn-sm"
-          >
+          <p class="text-base-content/70 text-sm">Want to submit a project or vote?</p>
+          <a href="/login?redirect=/events/{data.event.slug}" class="btn btn-primary btn-sm">
             Sign in to participate
           </a>
         {/if}

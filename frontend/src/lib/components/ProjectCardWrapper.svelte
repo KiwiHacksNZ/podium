@@ -3,7 +3,7 @@
   import Modal from "./Modal.svelte";
   import type { EventPrivate, EventPublic, ProjectPrivate } from "$lib/client/types.gen";
   import { validateProject } from "$lib/validation";
-  import { customInvalidateAll } from "$lib/misc";
+  import { customInvalidateAll, teamLabel } from "$lib/misc";
   import { toast } from "svelte-sonner";
   import { client } from "$lib/client/sdk.gen";
   import { getAuthenticatedUser } from "$lib/user.svelte";
@@ -22,9 +22,10 @@
   let imageFailed = $state(false);
   let teamBusy = $state(false);
 
-  const eventForProject = $derived(
-    events.find((event) => event.id === project.event_id)
-  );
+  // The API includes the event name; fall back to the attending list
+  const eventForProject = $derived(events.find((event) => event.id === project.event_id));
+  const eventName = $derived(project.event_name || eventForProject?.name || "");
+  const eventSlug = $derived(project.event_slug || eventForProject?.slug || "");
 
   const credits = $derived.by(() => {
     const allNames = [
@@ -57,10 +58,10 @@
 
   const statusBadge = $derived(
     project.validation_status === "valid"
-      ? { cls: "badge-success", label: "Valid", icon: "✅" }
+      ? { cls: "badge-success", label: "Valid" }
       : project.validation_status === "warning"
-        ? { cls: "badge-warning", label: "Warning", icon: "⚠️" }
-        : { cls: "badge-neutral", label: "Pending", icon: "⏳" }
+        ? { cls: "badge-warning", label: "Check links" }
+        : { cls: "badge-neutral", label: "Checking" }
   );
 
   async function triggerRevalidation() {
@@ -132,184 +133,142 @@
   }
 </script>
 
-<div class="h-full rounded-[28px] border-2 border-dashed border-base-content/35 bg-base-100/85 p-4 shadow-sm">
-  <div class="space-y-3">
-    <div class="text-center">
-      <p class="text-xs font-semibold uppercase tracking-wide text-base-content/55">Event Name</p>
-      {#if eventForProject}
+<article class="card h-full overflow-hidden border border-base-content/10 bg-base-100 shadow-sm">
+  <figure class="relative bg-base-200">
+    {#if project.image_url && !imageFailed}
+      <img
+        src={project.image_url}
+        alt={project.name}
+        class="aspect-[3/2] w-full object-cover"
+        loading="lazy"
+        onload={() => (imageReady = true)}
+        onerror={() => {
+          imageReady = true;
+          imageFailed = true;
+        }}
+        style={`opacity: ${imageReady ? 1 : 0}; transition: opacity 180ms ease;`}
+      />
+      {#if !imageReady}
+        <div class="skeleton absolute inset-0"></div>
+      {/if}
+    {:else}
+      <div class="flex aspect-[3/2] w-full items-center justify-center text-sm text-base-content/50">
+        No image
+      </div>
+    {/if}
+    {#if revalidating}
+      <span class="badge badge-neutral absolute left-3 top-3">
+        <span class="loading loading-dots loading-xs"></span>
+      </span>
+    {:else}
+      <button
+        type="button"
+        class={`badge absolute left-3 top-3 ${statusBadge.cls}`}
+        onclick={() => validationModal?.openModal()}
+        title="Validation details"
+      >
+        {statusBadge.label}
+      </button>
+    {/if}
+  </figure>
+
+  <div class="card-body gap-3 p-5">
+    <div>
+      {#if eventName}
         <a
-          href={`/events/${eventForProject.slug}`}
-          class="link link-hover text-base font-semibold text-base-content"
+          href={`/events/${eventSlug}`}
+          class="link link-hover text-xs font-semibold uppercase tracking-wide text-base-content/60"
           data-sveltekit-noscroll
         >
-          {eventForProject.name}
+          {eventName}
+        </a>
+      {/if}
+      <h2 class="card-title break-words text-xl leading-tight">{project.name}</h2>
+      {#if project.team_name}
+        <p class="text-sm font-semibold text-base-content/70">{teamLabel(project.team_name)}</p>
+      {/if}
+    </div>
+
+    <p class="line-clamp-2 text-sm text-base-content/75">
+      {project.description || "No description yet."}
+    </p>
+    <p class="text-xs text-base-content/60">{credits}</p>
+
+    <div class="flex flex-wrap items-center gap-2 rounded-box bg-base-200 px-3 py-2 text-sm">
+      <span class="text-base-content/60">Join code</span>
+      <button
+        type="button"
+        class="font-mono font-semibold tracking-wider"
+        onclick={copyJoinCode}
+        title="Copy join code"
+      >
+        {project.join_code}
+      </button>
+      <button type="button" class="link link-hover ml-auto text-sm" onclick={copyInviteLink}>
+        Copy invite link
+      </button>
+    </div>
+
+    <div class="card-actions mt-1 grid grid-cols-3 gap-2">
+      <a href={project.repo} target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary">
+        Repo
+      </a>
+      {#if project.demo}
+        <a href={project.demo} target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">
+          Demo
         </a>
       {:else}
-        <p class="text-sm text-base-content/60">Unknown event</p>
+        <span class="btn btn-sm btn-disabled">Demo</span>
       {/if}
+      <button class="btn btn-sm btn-outline" onclick={() => editModal?.openModal()}>
+        Edit
+      </button>
     </div>
 
-    <div class="grid grid-cols-1 gap-2 rounded-2xl border border-base-content/20 bg-base-100/70 p-2 text-center sm:grid-cols-3">
-      <div>
-        <p class="text-[10px] uppercase tracking-wide text-base-content/55">Status</p>
-        {#if revalidating}
-          <span class="badge badge-sm badge-neutral mt-1">
-            <span class="loading loading-dots loading-xs"></span>
-          </span>
-        {:else}
-          <button
-            class={`badge badge-sm mt-1 border border-base-content/20 ${statusBadge.cls}`}
-            onclick={() => validationModal?.openModal()}
-          >
-            {statusBadge.icon} {statusBadge.label}
-          </button>
-        {/if}
-      </div>
-
-      <div>
-        <p class="text-[10px] uppercase tracking-wide text-base-content/55">Join Code</p>
-        <div class="mt-1 flex flex-wrap justify-center gap-1">
-          <button
-            type="button"
-            class="badge badge-sm badge-outline font-mono cursor-copy"
-            onclick={copyJoinCode}
-            title="Click to copy join code"
-          >
-            {project.join_code}
-          </button>
-          <button
-            type="button"
-            class="badge badge-sm badge-outline cursor-copy"
-            onclick={copyInviteLink}
-            title="Copy invite link"
-          >
-            Invite
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <p class="text-[10px] uppercase tracking-wide text-base-content/55">Actions</p>
-        <button
-          class="btn btn-xs btn-outline mt-1"
-          onclick={() => editModal?.openModal()}
-        >
-          Edit
-        </button>
-      </div>
-    </div>
-
-    <div class="rounded-[22px] border-2 border-dashed border-base-content/35 p-3">
-      <p class="text-center text-xs font-semibold uppercase tracking-wide text-base-content/55">Project</p>
-
-      <div class="mt-2 overflow-hidden rounded-xl border border-base-content/15 bg-base-200/40">
-        {#if project.image_url}
-          <img
-            src={project.image_url}
-            alt={project.name}
-            class="aspect-[3/2] w-full object-cover"
-            loading="lazy"
-            onload={() => (imageReady = true)}
-            onerror={() => {
-              imageReady = true;
-              imageFailed = true;
-            }}
-            style={`opacity: ${imageReady && !imageFailed ? 1 : 0}; transition: opacity 180ms ease;`}
-          />
-        {/if}
-
-        {#if project.image_url && !imageReady}
-          <div class="skeleton aspect-[3/2] w-full"></div>
-        {:else if !project.image_url || imageFailed}
-          <div class="flex aspect-[3/2] items-center justify-center text-sm text-base-content/50">
-            No image
-          </div>
-        {/if}
-      </div>
-
-      <div class="mt-3 border-t border-base-content/20 pt-3 text-center">
-        <h3 class="text-lg font-semibold leading-tight text-base-content">{project.name}</h3>
-        <p class="mt-2 line-clamp-2 text-sm text-base-content/75">
-          {project.description || "No description yet."}
-        </p>
-        <p class="mt-2 text-xs text-base-content/60">{credits}</p>
-      </div>
-
-      <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <a
-          href={project.repo}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="btn btn-sm btn-info"
-        >
-          Repo
-        </a>
-
-        {#if project.demo}
-          <a
-            href={project.demo}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="btn btn-sm btn-success"
-          >
-            Demo
-          </a>
-        {:else}
-          <span class="btn btn-sm btn-disabled">Demo</span>
-        {/if}
-
-        <button class="btn btn-sm btn-outline" onclick={() => editModal?.openModal()}>
-          Edit
-        </button>
-      </div>
-
-      {#if isOwner || currentCollaborator}
-        <div class="mt-4 rounded-xl border border-base-content/15 bg-base-100/70 p-3 text-left">
-          <p class="text-xs font-semibold uppercase tracking-wide text-base-content/55">Team</p>
-          {#if collaboratorEntries.length === 0}
-            <p class="mt-2 text-sm text-base-content/60">No collaborators yet.</p>
-          {:else}
-            <div class="mt-2 space-y-2">
-              {#each collaboratorEntries as collaborator}
-                <div class="flex items-center justify-between gap-2">
-                  <span class="min-w-0 truncate text-sm">{collaborator.name}</span>
-                  <div class="flex shrink-0 gap-1">
-                    {#if isOwner}
-                      <button
-                        class="btn btn-xs btn-outline"
-                        onclick={() => transferOwner(collaborator.id)}
-                        disabled={teamBusy}
-                      >
-                        Make owner
-                      </button>
-                    {/if}
-                    {#if isOwner || collaborator.id === currentCollaborator?.id}
-                      <button
-                        class="btn btn-xs btn-error btn-outline"
-                        onclick={() => removeCollaborator(collaborator.id)}
-                        disabled={teamBusy}
-                      >
-                        {collaborator.id === currentCollaborator?.id ? "Leave" : "Remove"}
-                      </button>
-                    {/if}
-                  </div>
-                </div>
-              {/each}
+    {#if (isOwner || currentCollaborator) && collaboratorEntries.length > 0}
+      <div class="border-t border-base-content/10 pt-3">
+        <p class="text-xs font-semibold uppercase tracking-wide text-base-content/55">Team</p>
+        <div class="mt-2 space-y-2">
+          {#each collaboratorEntries as collaborator}
+            <div class="flex items-center justify-between gap-2">
+              <span class="min-w-0 truncate text-sm">{collaborator.name}</span>
+              <div class="flex shrink-0 gap-1">
+                {#if isOwner}
+                  <button
+                    class="btn btn-xs btn-ghost"
+                    onclick={() => transferOwner(collaborator.id)}
+                    disabled={teamBusy}
+                  >
+                    Make owner
+                  </button>
+                {/if}
+                {#if isOwner || collaborator.id === currentCollaborator?.id}
+                  <button
+                    class="btn btn-xs btn-ghost text-error"
+                    onclick={() => removeCollaborator(collaborator.id)}
+                    disabled={teamBusy}
+                  >
+                    {collaborator.id === currentCollaborator?.id ? "Leave" : "Remove"}
+                  </button>
+                {/if}
+              </div>
             </div>
-          {/if}
+          {/each}
         </div>
-      {/if}
-    </div>
+      </div>
+    {:else if isOwner}
+      <p class="text-xs text-base-content/50">No teammates yet. Share the invite link to add them.</p>
+    {/if}
   </div>
-</div>
+</article>
 
 <Modal title="Validation Details" bind:this={validationModal}>
   <div class="space-y-4">
     <div class="flex items-center gap-2 mb-2">
       {#if project.validation_status === "valid"}
-        <span class="text-success text-lg">✅ Your project looks good!</span>
+        <span class="text-success text-lg">Your project looks good</span>
       {:else if project.validation_status === "warning"}
-        <span class="text-warning text-lg">⚠️ Potential issue detected</span>
+        <span class="text-warning text-lg">Potential issue detected</span>
       {:else}
         <span class="text-base-content/70 text-lg">Validation pending…</span>
       {/if}

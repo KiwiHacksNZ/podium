@@ -394,8 +394,7 @@
       class="navbar bg-base-100 border-b border-base-300"
       id="landing-navbar"
     >
-      <div class="navbar-start"></div>
-      <div class="navbar-center">
+      <div class="navbar-start">
         <a href="/" class="flex items-center gap-2 btn btn-ghost px-2">
           <img
             src="/assets/kiwihacks/kiwi-text.png"
@@ -404,7 +403,7 @@
           />
         </a>
       </div>
-      <div class="navbar-end gap-2">
+      <div class="navbar-end gap-1 sm:gap-2">
         <a href="/events" class="btn btn-ghost btn-sm">Events</a>
         <a href="/past-events" class="btn btn-ghost btn-sm hidden sm:inline-flex">Past Events</a>
         <a
@@ -425,7 +424,8 @@
       <NoticeAndHelp />
     </div>
 
-    <div class="p-6 my-auto" id="landing-content">
+    <!-- Bottom padding keeps content clear of the floating theme/help buttons -->
+    <div class="p-6 pb-24 my-auto" id="landing-content">
       {#if navigating.to && navigating.type != "form"}
         <LoadingSpinner {loadingText} />
       {:else}

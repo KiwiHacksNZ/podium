@@ -290,11 +290,13 @@ async def get_projects(
                 selectinload(Project.votes),
                 selectinload(Project.owner),
                 selectinload(Project.collaborators),
+                selectinload(Project.event),
             ),
             selectinload(User.projects_collaborating).options(
                 selectinload(Project.votes),
                 selectinload(Project.owner),
                 selectinload(Project.collaborators),
+                selectinload(Project.event),
             ),
         )
     )
@@ -302,7 +304,15 @@ async def get_projects(
     if not u:
         raise BAD_AUTH
     all_projects = list(u.owned_projects) + list(u.projects_collaborating)
-    return [ProjectPrivate.model_validate(p) for p in all_projects]
+    return [
+        ProjectPrivate.model_validate(p).model_copy(
+            update={
+                "event_name": p.event.name if p.event else "",
+                "event_slug": p.event.slug if p.event else "",
+            }
+        )
+        for p in all_projects
+    ]
 
 
 @router.post("/")

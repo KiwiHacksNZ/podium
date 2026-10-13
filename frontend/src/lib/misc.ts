@@ -169,3 +169,17 @@ export function voteBreakdown(rankCounts: number[] | undefined): string {
 
 /** Projects declare whether AI wrote less than this share of their code (matches the backend). */
 export const AI_CODE_LIMIT_PERCENT = 30;
+
+/** Short, human status for an event: what attendees can do right now. */
+export function eventStatus(event: {
+  phase: string;
+  voting_open?: boolean;
+  judging_open?: boolean;
+}): { label: string; badge: string } {
+  if (event.phase === "closed") return { label: "Results are out", badge: "badge-info" };
+  if (event.voting_open) return { label: "Voting open", badge: "badge-warning" };
+  if (event.judging_open) return { label: "Judging in progress", badge: "badge-accent" };
+  if (event.phase === "submission") return { label: "Submissions open", badge: "badge-success" };
+  if (event.phase === "judging" || event.phase === "voting") return { label: "Submissions closed", badge: "badge-neutral" };
+  return { label: "Coming soon", badge: "badge-ghost" };
+}

@@ -111,18 +111,20 @@
           href={project.repo}
           target="_blank"
           rel="noopener"
+          class="btn btn-secondary btn-sm"
           onclick={(e) => e.stopPropagation()}
         >
-          <div class="btn btn-secondary btn-lg underline">Repo</div>
+          Repo
         </a>
         {#if project.demo}
           <a
             href={project.demo}
             target="_blank"
             rel="noopener"
+            class="btn btn-primary btn-sm"
             onclick={(e) => e.stopPropagation()}
           >
-            <div class="btn btn-primary btn-lg underline">Demo</div>
+            Demo
           </a>
         {/if}
       </div>

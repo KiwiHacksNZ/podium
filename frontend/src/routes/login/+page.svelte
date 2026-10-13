@@ -167,7 +167,7 @@
   // }
 </script>
 
-<div class="p-4 max-w-md mx-auto" {...rest}>
+<div class="p-4 w-full max-w-md mx-auto" {...rest}>
   {#if isAuthenticated()}
     <div class="text-center">
       <h2 class="text-2xl font-bold mb-2">
@@ -186,6 +186,12 @@
       <p class="mt-2">Verifying your magic link...</p>
     </div>
   {:else}
+    <div class="mb-6 text-center">
+      <h1 class="text-3xl font-black tracking-tight">Sign in to Podium</h1>
+      <p class="mt-2 text-sm text-base-content/70">
+        Submit your project, vote and see results. New here? Signing in creates your account.
+      </p>
+    </div>
     {#if hackClubSsoEnabled}
       <a
         href="{env.PUBLIC_API_URL}/auth/sso"
@@ -234,9 +240,7 @@
           }
         }}
       />
-      <label class="label flex justify-between" for="email">
-        <span>We'll send you an email</span>
-      </label>
+      <p class="label text-xs">We'll email you a sign-in link. No password needed.</p>
 
       {#if showSignupFields}
         <label class="label" for="first_name">First Name</label>
@@ -371,7 +375,7 @@
 
       <div class="flex justify-center">
         <button
-          class="btn btn-primary mt-4"
+          class="btn btn-primary btn-block mt-4"
           disabled={!!turnstileSiteKey && !turnstileToken}
           use:asyncClick={eitherLoginOrSignUp}
         >
@@ -383,6 +387,6 @@
 
   {/if}
   <div class="text-center mt-4">
-    <a href="/" class="btn-sm btn-secondary btn">← Back Home</a>
+    <a href="/" class="link link-hover text-sm text-base-content/60">&larr; Back to home</a>
   </div>
 </div>

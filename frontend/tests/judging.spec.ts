@@ -419,13 +419,15 @@ test.describe('Ranked ballot', () => {
 			timeout: 15000
 		});
 
-		const cardFor = (name: string) => authedPage.locator('.grid > div').filter({ hasText: name });
-		await expect(cardFor(projects[2].name).getByText('Points: 4')).toBeVisible();
-		await expect(cardFor(projects[0].name).getByText('Points: 3')).toBeVisible();
-		await expect(cardFor(projects[3].name).getByText('Points: 3')).toBeVisible();
-		await expect(cardFor(projects[1].name).getByText('Points: 2')).toBeVisible();
+		const pointsFor = (name: string) =>
+			authedPage.getByTestId('leaderboard-entry').filter({ hasText: name }).getByTestId('entry-points');
+		await expect(pointsFor(projects[2].name)).toHaveText('4');
+		await expect(pointsFor(projects[0].name)).toHaveText('3');
+		await expect(pointsFor(projects[3].name)).toHaveText('3');
+		await expect(pointsFor(projects[1].name)).toHaveText('2');
 
-		const order = (await authedPage.locator('.grid .card-title').allTextContents()).map((t) =>
+		// DOM order is rank order (the podium only reorders visually)
+		const order = (await authedPage.getByTestId('entry-name').allTextContents()).map((t) =>
 			t.trim()
 		);
 		expect(order[0]).toBe(projects[2].name);
