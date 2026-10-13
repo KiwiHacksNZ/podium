@@ -45,11 +45,16 @@
     const others = flagsCsv.split(",").map((f) => f.trim()).filter((f) => f && !seriesSlugs.has(f));
     return [slug, ...others].filter(Boolean).join(",");
   }
+  // Soft-deleted events are hidden unless asked for
+  let showDeleted = $state(false);
+  const deletedCount = $derived(eventsPage.items.filter((e) => e.deleted_at).length);
+
   // Events table grouped by series: current series first, then A-Z, then
   // events with no series
   const eventGroups = $derived.by(() => {
     const groups = new Map<string, EventPrivate[]>();
     for (const e of eventsPage.items) {
+      if (e.deleted_at && !showDeleted) continue;
       const slug = seriesOf(e.feature_flags_csv);
       groups.set(slug, [...(groups.get(slug) ?? []), e]);
     }
@@ -376,7 +381,15 @@
   <!-- Events Table -->
   <div class="card bg-base-100 shadow-lg">
     <div class="card-body">
-      <h2 class="card-title">All Events</h2>
+      <div class="flex items-center justify-between gap-4">
+        <h2 class="card-title">All Events</h2>
+        {#if deletedCount > 0}
+          <label class="flex items-center gap-2 cursor-pointer text-sm">
+            <input type="checkbox" class="toggle toggle-sm" bind:checked={showDeleted} />
+            Show deleted ({deletedCount})
+          </label>
+        {/if}
+      </div>
       {#if loading}
         <span class="loading loading-spinner loading-md"></span>
       {:else if eventsPage.total === 0}
