@@ -56,7 +56,7 @@
 <!-- Full class names so Tailwind can see them -->
 {#snippet action(href: string, title: string, blurb: string, enabled: boolean, accent: keyof typeof accents)}
   {#if enabled}
-    <a {href} class="card border border-base-content/10 bg-base-100 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md {accents[accent].border}">
+    <a {href} class="card border border-base-content/10 bg-base-100 shadow-sm transition-colors {accents[accent].border}">
       <div class="card-body gap-1 p-5">
         <span class="flex items-center justify-between gap-2">
           <span class="text-lg font-bold">{title}</span>

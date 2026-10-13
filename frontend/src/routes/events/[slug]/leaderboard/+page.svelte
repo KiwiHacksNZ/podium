@@ -61,7 +61,7 @@
     {#if rest.length > 0}
       <ol class="mt-8 flex flex-col gap-2">
         {#each rest as project, i (project.id)}
-          <li data-testid="leaderboard-entry" class="flex items-center gap-4 rounded-box border border-base-content/10 bg-base-100 px-4 py-3">
+          <li data-testid="leaderboard-entry" class="card flex-row items-center gap-4 bg-base-100 px-4 py-3">
             <span class="w-8 shrink-0 text-center text-lg font-black text-base-content/60">{i + 4}</span>
             {#if project.image_url}
               <img src={project.image_url} alt="" class="hidden h-12 w-18 shrink-0 rounded-lg object-cover sm:block" loading="lazy" />

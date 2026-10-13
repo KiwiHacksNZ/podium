@@ -56,27 +56,28 @@
   onkeydown={selectable ? (e) => e.key === "Enter" && toggle() : null}
   aria-pressed={isSelected}
   disabled={!selectable}
-  class="m-4 text-left {selectable ? 'cursor-pointer group' : ''}"
+  class="block h-full w-full text-left {selectable ? 'cursor-pointer group' : ''}"
 >
+  <!-- Selection is a ring, not a size change, so the grid never shifts -->
   <div
-    class="card card-sm bg-base-100 rounded transition-transform duration-200 border-solid border-base {isSelected
-      ? 'border-info scale-105 border-4 shadow-lg'
+    class="card card-sm h-full overflow-hidden bg-base-100 transition-shadow duration-150 {isSelected
+      ? 'ring-4 ring-info'
       : selectable
-        ? 'border-2 border-dashed border-base-content/30 group-hover:border-info group-hover:-translate-y-1'
+        ? 'group-hover:ring-2 group-hover:ring-info/60'
         : ''}"
   >
-    <figure class="w-full relative">
+    <figure class="w-full relative bg-base-200">
       <img
         src={project.image_url}
         alt="Project"
-        class="object-contain w-full h-auth max-h-48 aspect-[3/2]"
+        class="aspect-[3/2] w-full object-cover"
         loading="lazy"
         onload={() => (loadingImage = false)}
         onerror={() => (loadingImage = false)}
         style="opacity: {loadingImage ? 0 : 1}; transition: opacity 0.2s;"
       />
       {#if loadingImage}
-        <div class="skeleton h-48 w-full absolute top-0 left-0"></div>
+        <div class="skeleton absolute inset-0"></div>
       {/if}
       {#if rankLabel}
         <div class="badge badge-info badge-lg absolute top-2 left-2 z-10">
@@ -84,7 +85,7 @@
         </div>
       {/if}
     </figure>
-    <div class="card-body">
+    <div class="card-body grow">
       <h2 class="card-title break-words overflow-x-auto">
         {project.name}
       </h2>
@@ -131,7 +132,7 @@
     </div>
     {#if selectable}
       <div
-        class="rounded-b px-4 py-3 text-center font-extrabold uppercase tracking-wide text-sm {isSelected
+        class="border-t border-base-content/10 px-4 py-3 text-center font-extrabold uppercase tracking-wide text-sm {isSelected
           ? 'bg-info text-info-content'
           : 'bg-base-200 group-hover:bg-info group-hover:text-info-content'}"
       >

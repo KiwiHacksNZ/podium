@@ -12,7 +12,9 @@
   --kh-blue-bright: #36c6fb;
   --kh-bg: #eae6e2;
   --kh-paper: rgba(255, 255, 255, 0.84);
-  --kh-border: 1.5px dashed var(--kh-ink);
+  --kh-border: 1px dashed var(--kh-ink);
+  /* kiwihacks.com cards: white, 1px dashed deep green, no shadow */
+  --kh-card-border: 1px dashed #2e522b;
   --kh-radius: 15px;
 }
 
@@ -162,27 +164,26 @@
 [data-theme="kiwihacks"] .modal-box,
 [data-theme="kiwihacks"] .fieldset,
 [data-theme="kiwihacks"] .collapse {
-  border: var(--kh-border);
+  border: var(--kh-card-border);
   border-radius: var(--kh-radius);
-  background: var(--kh-paper);
-  box-shadow: 0 8px 22px rgba(19, 47, 30, 0.12);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+/* Cards nested inside cards (e.g. admin panels) sit on the canvas tone */
+[data-theme="kiwihacks"] .card .card,
+[data-theme="kiwihacks"] .card.bg-base-200 {
+  background: #f7f5f2;
 }
 
 [data-theme="kiwihacks"] .btn {
-  font-family: "ABeeZee", "Figtree", sans-serif;
+  font-family: "Figtree", sans-serif;
   font-weight: 600;
   border: var(--kh-border);
   border-radius: var(--kh-radius);
   color: var(--kh-ink);
-  transition:
-    background-color 180ms ease,
-    box-shadow 180ms ease,
-    transform 160ms ease;
-}
-
-[data-theme="kiwihacks"] .btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 5px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: none;
+  transition: background-color 150ms ease;
 }
 
 [data-theme="kiwihacks"] .btn-primary {
@@ -263,11 +264,12 @@
 }
 
 [data-theme="kiwihacks"] .badge {
-  border: 1px solid rgba(19, 47, 30, 0.4);
+  border: var(--kh-border);
   color: var(--kh-ink);
-  background: rgba(255, 255, 255, 0.75);
-  min-height: 1.95rem;
-  padding: 0.34rem 0.75rem;
+  background: #ffffff;
+  font-family: "Figtree", sans-serif;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
   line-height: 1.1;
   display: inline-flex;
   align-items: center;
@@ -286,18 +288,50 @@
   background: rgba(145, 226, 255, 0.82);
 }
 
+/* Badges laid over project images need solid fills to stay readable */
+[data-theme="kiwihacks"] figure .badge {
+  background: #ffffff;
+}
+
+[data-theme="kiwihacks"] figure .badge-success {
+  background: var(--kh-green);
+}
+
+[data-theme="kiwihacks"] figure .badge-warning {
+  background: #f1ca4d;
+}
+
+[data-theme="kiwihacks"] figure .badge-info {
+  background: var(--kh-blue);
+}
+
 [data-theme="kiwihacks"] .badge-error {
   background: rgba(176, 71, 71, 0.82);
   color: #fff2f2;
 }
 
+/* kiwihacks.com: page and section titles in bold Source Code Pro, smaller
+   headings (card titles) in bold Figtree */
 [data-theme="kiwihacks"] h1,
-[data-theme="kiwihacks"] h2,
-[data-theme="kiwihacks"] h3,
-[data-theme="kiwihacks"] h4 {
+[data-theme="kiwihacks"] h2 {
   color: var(--kh-ink);
-  font-family: "ABeeZee", "Figtree", sans-serif;
-  letter-spacing: 0.01em;
+  font-family: "Source Code Pro", monospace;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="kiwihacks"] h3,
+[data-theme="kiwihacks"] h4,
+[data-theme="kiwihacks"] .card-title {
+  color: var(--kh-ink);
+  font-family: "Figtree", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+[data-theme="kiwihacks"] a.link {
+  text-decoration-color: var(--kh-green-deep);
+  text-underline-offset: 3px;
 }
 
 [data-theme="kiwihacks"] .mono {
@@ -317,15 +351,14 @@
 }
 
 [data-theme="kiwihacks"] .official-event-card {
-  background: var(--kh-green-wash);
-  border: var(--kh-border);
-  border-radius: 16px;
-  box-shadow: 0 8px 22px rgba(19, 47, 30, 0.12);
+  background: #ffffff;
+  border: var(--kh-card-border);
+  border-radius: var(--kh-radius);
+  box-shadow: none;
 }
 
 [data-theme="kiwihacks"] .official-event-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(19, 47, 30, 0.2);
+  background: #fbfaf8;
 }
 
 [data-theme="kiwihacks"] .official-event-hero {
