@@ -20,6 +20,7 @@ export type JudgeProject = {
   description?: string | null;
   image_url?: string | null;
   owner_display_name?: string | null;
+  member_names?: string[];
   ai_declaration?: string;
   ai_under_limit?: boolean | null;
   my_score: JudgeScore | null;

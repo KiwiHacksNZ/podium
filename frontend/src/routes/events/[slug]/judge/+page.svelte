@@ -6,7 +6,8 @@
   import { client } from "$lib/client/sdk.gen";
   import StarRating from "$lib/components/StarRating.svelte";
   import AiDeclaration from "$lib/components/AiDeclaration.svelte";
-  import { handleError, teamLabel, withHttpsIfMissing } from "$lib/misc";
+  import { handleError, withHttpsIfMissing } from "$lib/misc";
+  import TeamMembers from "$lib/components/TeamMembers.svelte";
   import { asyncClick } from "$lib/actions/asyncClick";
   import { getAuthenticatedUser } from "$lib/user.svelte";
 
@@ -302,12 +303,7 @@
       </p>
       <h1 class="text-3xl sm:text-4xl font-extrabold">Your grades</h1>
       <h2 class="text-xl sm:text-2xl font-bold break-words">{project.name}</h2>
-      {#if project.team_name}
-        <p class="font-semibold">{teamLabel(project.team_name)}</p>
-      {/if}
-      {#if project.owner_display_name}
-        <p class="text-sm opacity-70">by {project.owner_display_name}</p>
-      {/if}
+      <TeamMembers {project} />
     </header>
 
     <!-- Judges rarely grade in list order — presenters run late, swap slots —

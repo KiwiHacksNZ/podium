@@ -3,7 +3,8 @@
   import { client } from "$lib/client/sdk.gen";
   import type { EventPrivate } from "$lib/client/types.gen";
   import ConfirmationModal from "$lib/components/ConfirmationModal.svelte";
-  import { AI_CODE_LIMIT_PERCENT, handleError, teamLabel } from "$lib/misc";
+  import { AI_CODE_LIMIT_PERCENT, handleError } from "$lib/misc";
+  import TeamMembers from "$lib/components/TeamMembers.svelte";
   import { toast } from "svelte-sonner";
 
   // Judging endpoints aren't in the generated SDK yet, so these mirror the API.
@@ -11,6 +12,7 @@
     project_id: string;
     name: string;
     team_name: string;
+    member_names: string[];
     ai_under_limit: boolean | null;
     judge_score: number;
     judge_count: number;
@@ -127,9 +129,7 @@
                 <td>{index + 1}</td>
                 <td>
                   <div class="font-medium">{result.name}</div>
-                  {#if result.team_name}
-                    <div class="text-xs opacity-70">{teamLabel(result.team_name)}</div>
-                  {/if}
+                  <TeamMembers project={result} />
                   {#if result.ai_under_limit === false}
                     <span class="badge badge-error badge-xs mt-1">Over {AI_CODE_LIMIT_PERCENT}% AI</span>
                   {/if}

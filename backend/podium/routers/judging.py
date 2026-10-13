@@ -71,6 +71,8 @@ class JudgeProject(BaseModel):
     description: str
     image_url: str
     owner_display_name: str
+    # Owner first, then collaborators
+    member_names: list[str]
     ai_declaration: str
     ai_under_limit: bool | None
     my_score: JudgeScorePublic | None = None
@@ -100,11 +102,18 @@ class JudgeResult(BaseModel):
     project_id: UUID
     name: str
     team_name: str
+    member_names: list[str]
     ai_under_limit: bool | None
     judge_score: float
     judge_count: int
     is_finalist: bool
     averages: dict[str, float]
+
+
+def _member_names(project: Project) -> list[str]:
+    """Display names of the owner then collaborators, skipping blanks."""
+    names = [project.owner_display_name, *project.collaborator_display_names]
+    return [n for n in names if n]
 
 
 def _score_to_public(score: JudgeScore) -> JudgeScorePublic:
@@ -245,7 +254,7 @@ async def list_projects_to_judge(
         session,
         select(Project)
         .where(Project.event_id == event_id)
-        .options(selectinload(Project.owner))
+        .options(selectinload(Project.owner), selectinload(Project.collaborators))
         # Judges find projects by team, so group named teams first, A-Z
         .order_by(Project.team_name == "", Project.team_name, Project.name),
     )
@@ -270,6 +279,7 @@ async def list_projects_to_judge(
                 description=p.description,
                 image_url=p.image_url,
                 owner_display_name=p.owner_display_name,
+                member_names=_member_names(p),
                 ai_declaration=p.ai_declaration,
                 ai_under_limit=p.ai_under_limit,
                 my_score=(
@@ -362,7 +372,11 @@ async def judging_results(
         session,
         select(Project)
         .where(Project.event_id == event_id)
-        .options(selectinload(Project.judge_scores)),
+        .options(
+            selectinload(Project.judge_scores),
+            selectinload(Project.owner),
+            selectinload(Project.collaborators),
+        ),
     )
 
     results = [
@@ -370,6 +384,7 @@ async def judging_results(
             project_id=p.id,
             name=p.name,
             team_name=p.team_name,
+            member_names=_member_names(p),
             ai_under_limit=p.ai_under_limit,
             judge_score=p.judge_score,
             judge_count=p.judge_count,

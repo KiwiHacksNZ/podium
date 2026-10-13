@@ -182,3 +182,15 @@ export function eventStatus(event: {
   if (event.phase === "judging" || event.phase === "voting") return { label: "Submissions closed", badge: "badge-neutral" };
   return { label: "Coming soon", badge: "badge-ghost" };
 }
+
+/** "Aroha T., Liam P. and Mere K." from a project's owner and collaborators. */
+export function memberNames(project: {
+  owner_display_name?: string | null;
+  collaborator_display_names?: string[] | null;
+  member_names?: string[] | null;
+}): string {
+  const names = (
+    project.member_names ?? [project.owner_display_name, ...(project.collaborator_display_names ?? [])]
+  ).filter((n): n is string => Boolean(n && n.trim()));
+  return new Intl.ListFormat("en-NZ", { style: "long", type: "conjunction" }).format(names);
+}

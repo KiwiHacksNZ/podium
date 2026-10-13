@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { teamLabel, voteBreakdown, withHttpsIfMissing } from "$lib/misc";
+  import { voteBreakdown, withHttpsIfMissing } from "$lib/misc";
+  import TeamMembers from "$lib/components/TeamMembers.svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -40,9 +41,7 @@
           </figure>
           <div class="card-body gap-2 p-4">
             <h2 data-testid="entry-name" class="card-title break-words text-lg leading-tight">{project.name}</h2>
-            {#if project.team_name}
-              <p class="-mt-1 text-sm font-semibold text-base-content/70">{teamLabel(project.team_name)}</p>
-            {/if}
+            <TeamMembers {project} class="-mt-1" />
             <p class="text-2xl font-black"><span data-testid="entry-points">{project.points}</span> <span class="text-sm font-semibold text-base-content/60">pts</span></p>
             <p class="text-xs text-base-content/60">{voteBreakdown(project.rank_counts)}</p>
             <div class="card-actions mt-1">
@@ -68,11 +67,8 @@
             {/if}
             <div class="min-w-0 grow">
               <p data-testid="entry-name" class="truncate font-bold">{project.name}</p>
-              <p class="truncate text-xs text-base-content/60">
-                {[project.team_name ? teamLabel(project.team_name) : "", voteBreakdown(project.rank_counts)]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
+              <TeamMembers {project} />
+              <p class="truncate text-xs text-base-content/60">{voteBreakdown(project.rank_counts)}</p>
             </div>
             <span class="shrink-0 text-lg font-black"><span data-testid="entry-points">{project.points}</span> <span class="text-xs font-semibold text-base-content/60">pts</span></span>
           </li>
