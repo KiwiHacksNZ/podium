@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { EventPublic } from "$lib/client";
+  import { eventStatus } from "$lib/misc";
 
   let {
     events = [],
@@ -11,18 +12,6 @@
     error?: boolean;
   } = $props();
 
-  const phaseLabel: Record<string, string> = {
-    draft: "Draft",
-    submission: "Submissions Open",
-    voting: "Voting Open",
-    closed: "Results Available",
-  };
-  const phaseBadge: Record<string, string> = {
-    draft: "badge-ghost",
-    submission: "badge-success",
-    voting: "badge-warning",
-    closed: "badge-info",
-  };
   const eventHeroImages: Record<string, string> = {
     kiwihacks: "/assets/kiwihacks/kiwi-logo.png",
   };
@@ -64,8 +53,8 @@
       {/if}
       <div class="card-body gap-4 items-center text-center">
         <div class="flex flex-col items-center gap-2">
-          <span class="badge {phaseBadge[events[0].phase] ?? 'badge-ghost'} text-xs">
-            {phaseLabel[events[0].phase] ?? events[0].phase}
+          <span class="badge {eventStatus(events[0]).badge} text-xs">
+            {eventStatus(events[0]).label}
           </span>
           <h2 class="card-title text-2xl group-hover:text-primary transition-colors">
             {events[0].name}
@@ -81,9 +70,6 @@
     </a>
   </div>
 {:else if events.length > 1}
-  <div class="official-events-divider divider text-base-content/40 text-sm font-medium">
-    {events.length} events
-  </div>
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     {#each events as event (event.id)}
       <a
@@ -91,19 +77,12 @@
         class="official-event-card card bg-base-100 border border-base-300 shadow-sm hover:shadow-md hover:border-primary/30 transition-all group"
       >
         <div class="card-body gap-3">
-          {#if getEventHeroImage(event)}
-            <img
-              src={getEventHeroImage(event)}
-              alt={event.name}
-              class="official-event-hero h-24 object-contain mx-auto"
-            />
-          {/if}
           <div class="flex items-start justify-between gap-2">
             <h2 class="card-title text-base group-hover:text-primary transition-colors">
               {event.name}
             </h2>
-            <span class="badge {phaseBadge[event.phase] ?? 'badge-ghost'} shrink-0 text-xs">
-              {phaseLabel[event.phase] ?? event.phase}
+            <span class="badge {eventStatus(event).badge} shrink-0 text-xs">
+              {eventStatus(event).label}
             </span>
           </div>
           {#if event.description}
@@ -111,17 +90,18 @@
               {event.description}
             </p>
           {/if}
-          <div class="flex justify-end">
-            <span class="official-event-view text-primary text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-              View event →
-            </span>
-          </div>
         </div>
       </a>
     {/each}
   </div>
 {:else}
-  <p class="text-center text-base-content/50 py-8">
-    No events available right now. Check back soon.
-  </p>
+  <div class="card bg-base-100">
+    <div class="card-body items-center gap-1 py-8 text-center">
+      <p class="font-semibold">No events are running right now.</p>
+      <p class="text-sm text-base-content/70">
+        The next KiwiHacks will show up here. Until then,
+        <a href="/past-events" class="link link-primary">see past results</a>.
+      </p>
+    </div>
+  </div>
 {/if}
