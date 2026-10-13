@@ -336,7 +336,17 @@ async def get_event_projects(
         ),
     )
 
-    if not all_projects and event.voting_open and any(p.is_finalist for p in projects):
+    # Finalist-only is a ballot concern: it shapes what attendees can rank during
+    # the voting phase. Results are served after it, so they list everyone.
+    # The phase, not voting_open, decides: organizers open and close the voting
+    # round freely within the phase, and the ballot keeps its shape throughout.
+    voting_phase = event.phase == EventPhase.VOTING or event.voting_open
+    if (
+        not leaderboard
+        and not all_projects
+        and voting_phase
+        and any(p.is_finalist for p in projects)
+    ):
         projects = [p for p in projects if p.is_finalist]
 
     if leaderboard:

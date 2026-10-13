@@ -29,12 +29,13 @@ from podium.db.postgres import (
     Vote,
     VoteAuditLog,
     Referral,
+    JudgeScore,
     get_session,
     scalar_one_or_none,
     scalar_all,
 )
 from podium.routers.auth import get_current_user
-from podium.constants import BAD_ACCESS, FINALIST_COUNT
+from podium.constants import BAD_ACCESS, FINALIST_COUNT, EventPhase
 from podium.cache import cache_delete
 
 router = APIRouter(prefix="/events/admin", tags=["events"])
@@ -168,6 +169,12 @@ async def update_event_admin(
     for field, value in update.model_dump(exclude_unset=True).items():
         setattr(event, field, value)
 
+    # Closing an event ends voting for good, so the flag can't linger and leave a
+    # finished event taking ballots. Earlier phases leave it alone: organizers run
+    # the voting round where they like, and may set it up long before voting opens.
+    if update.phase == EventPhase.CLOSED and update.voting_open is None:
+        event.voting_open = False
+
     await session.commit()
     await session.refresh(event)
     return EventPrivate.model_validate(event)
@@ -233,6 +240,85 @@ async def get_event_judges(
         )
         for j in event.judges
     ]
+
+
+class JudgeProgress(BaseModel):
+    id: UUID
+    name: str
+    # The contact email code-only judges gave, else their account email
+    email: str
+    scored: int
+    last_scored_at: datetime | None
+
+
+class ProjectCoverage(BaseModel):
+    id: UUID
+    name: str
+    team_name: str
+    judges_scored: int
+
+
+class JudgingProgress(BaseModel):
+    total_projects: int
+    judges: list[JudgeProgress]
+    projects: list[ProjectCoverage]
+
+
+@router.get("/{event_id}/judging-progress")
+async def get_judging_progress(
+    event_id: Annotated[UUID, Path(title="Event ID")],
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> JudgingProgress:
+    """How far each judge has got, and how many judges have scored each
+    project. A score row only exists once all four criteria are set, so
+    every row counts as a finished score."""
+    event = await get_owned_event(
+        event_id, user, session, selectinload(Event.judges), selectinload(Event.projects)
+    )
+    project_ids = {p.id for p in event.projects}
+    scores = [
+        s
+        for s in await scalar_all(
+            session, select(JudgeScore).where(JudgeScore.event_id == event_id)
+        )
+        if s.project_id in project_ids
+    ]
+    contact = {
+        link.user_id: link.judge_email
+        for link in await scalar_all(
+            session, select(EventJudgeLink).where(EventJudgeLink.event_id == event_id)
+        )
+    }
+
+    judges = []
+    for j in event.judges:
+        mine = [s for s in scores if s.judge_id == j.id]
+        judges.append(
+            JudgeProgress(
+                id=j.id,
+                name=j.display_name or j.first_name,
+                email=contact.get(j.id) or j.email,
+                scored=len(mine),
+                last_scored_at=max((s.updated_at for s in mine), default=None),
+            )
+        )
+    judges.sort(key=lambda j: (j.scored, j.name.lower()))
+
+    per_project = {pid: 0 for pid in project_ids}
+    for s in scores:
+        per_project[s.project_id] += 1
+    projects = sorted(
+        (
+            ProjectCoverage(
+                id=p.id, name=p.name, team_name=p.team_name, judges_scored=per_project[p.id]
+            )
+            for p in event.projects
+        ),
+        key=lambda p: (p.judges_scored, p.name.lower()),
+    )
+
+    return JudgingProgress(total_projects=len(project_ids), judges=judges, projects=projects)
 
 
 @router.post("/{event_id}/add-judge")
