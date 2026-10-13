@@ -233,6 +233,19 @@ async def make_series_current(
     return EventSeriesPublic.model_validate(target)
 
 
+@router.delete("/series/current")
+async def clear_current_series(
+    user: Annotated[User, Depends(require_superadmin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    """Unset the current series. The official event list falls back to the
+    ACTIVE_EVENT_SERIES setting until another series is made current."""
+    for s in await scalar_all(session, select(EventSeries).where(EventSeries.is_current)):
+        s.is_current = False
+    await session.commit()
+    return {"message": "No series is current"}
+
+
 @router.get("/users")
 async def list_users(
     user: Annotated[User, Depends(require_superadmin)],
