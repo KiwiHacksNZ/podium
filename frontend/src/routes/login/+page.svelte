@@ -193,27 +193,28 @@
       </p>
     </div>
     {#if hackClubSsoEnabled}
-      <a
-        href="{env.PUBLIC_API_URL}/auth/sso"
-        class="btn btn-lg w-full mb-2 gap-2"
-        style="background-color: #132f1e; color: #eae6e2; border-color: #132f1e;"
-      >
-        <img src="/kiwihacks-logo.png" alt="KiwiHacks" class="w-6 h-6" />
-        Sign in with KiwiHacks
-      </a>
-      <p class="text-center text-sm text-base-content/60 mb-1">
-        One account for everything KiwiHacks.
-      </p>
+      <!-- KiwiHacks account is the main way in; email is the fallback -->
+      <div class="card bg-base-100 mb-3">
+        <div class="card-body gap-3 p-5">
+          <a href="{env.PUBLIC_API_URL}/auth/sso" class="btn btn-primary btn-lg btn-block gap-3">
+            <img src="/kiwihacks-logo.png" alt="" class="h-6 w-6" />
+            Sign in with KiwiHacks
+          </a>
+          <p class="text-center text-sm text-base-content/60">
+            One account for everything KiwiHacks.
+          </p>
+        </div>
+      </div>
       {#if !showEmailLogin}
         <button
           type="button"
-          class="btn btn-link btn-xs w-full text-base-content/50"
+          class="link link-hover block w-full text-center text-sm text-base-content/60"
           onclick={() => (showEmailLogin = true)}
         >
-          or continue with email
+          Use email instead
         </button>
       {:else}
-        <div class="divider my-2">or use email</div>
+        <div class="divider my-2 text-sm text-base-content/50">or use email</div>
       {/if}
     {/if}
 

@@ -95,13 +95,14 @@
 
 [data-theme="nova"] #sidebar-top .sidebar-brand-link {
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
   text-decoration: none;
 }
 
 [data-theme="nova"] #sidebar-top .sidebar-brand-logo {
-  height: 3.2rem;
-  margin-left: -0.35rem;
+  height: 2rem;
+  width: auto;
+  margin-left: -0.2rem;
 }
 
 [data-theme="nova"] #sidebar-top .sidebar-brand-subtitle {

@@ -6,7 +6,9 @@
   import { onMount, onDestroy } from "svelte";
   import ThemeSwitcher from "$lib/components/ThemeSwitcher.svelte";
   import LoadingSpinner from "$lib/components/LoadingSpinner.svelte";
-  import { applyStoredTheme, returnLoadingText } from "$lib/misc";
+  import { applyStoredTheme, eventStatus, returnLoadingText } from "$lib/misc";
+  import { EventsService } from "$lib/client/sdk.gen";
+  import type { EventPublic } from "$lib/client/types.gen";
   import { env } from "$env/dynamic/public";
   import MaintenanceMode from "$lib/components/MaintenanceMode.svelte";
 
@@ -75,7 +77,7 @@
   };
 
   // Navigation options
-  type NavItem = { label: string; icon: string };
+  type NavItem = { label: string; icon: string; section?: "organiser" };
   const navOptions: Record<string, NavItem> = $derived.by(() => {
     const currentUser = getAuthenticatedUser().user;
 
@@ -88,20 +90,37 @@
       "/": { label: "Home", icon: "home" },
       "/projects": { label: "Projects", icon: "projects" },
       "/events": { label: "Events", icon: "events" },
-      "/past-events": { label: "Past Events", icon: "events" },
+      "/past-events": { label: "Past Events", icon: "trophy" },
     };
     if (currentUser.is_superadmin) {
       return {
         ...base,
-        "/admin": { label: "Admin", icon: "create" },
-        "/superadmin": { label: "Superadmin", icon: "create" },
+        "/admin": { label: "Admin", icon: "shield", section: "organiser" },
+        "/superadmin": { label: "Superadmin", icon: "key", section: "organiser" },
       };
     }
     if (currentUser.is_admin) {
-      return { ...base, "/admin": { label: "Admin", icon: "create" } };
+      return { ...base, "/admin": { label: "Admin", icon: "shield", section: "organiser" } };
     }
     return base;
   });
+
+  // "Your event" card: the first event the user attends that isn't archived
+  let sidebarEvent = $state<EventPublic | null>(null);
+  $effect(() => {
+    if (!isAuthed) {
+      sidebarEvent = null;
+      return;
+    }
+    EventsService.getAttendingEventsEventsGet({ throwOnError: false }).then(({ data }) => {
+      sidebarEvent = data?.attending_events.find((e) => !e.is_past) ?? null;
+    });
+  });
+
+  const navGroups = $derived([
+    Object.entries(navOptions).filter(([, item]) => !item.section),
+    Object.entries(navOptions).filter(([, item]) => item.section === "organiser"),
+  ]);
 
   // Reset Airtable hits counter on page navigation
   $effect(() => {
@@ -118,6 +137,10 @@
     events:
       "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v14a2 2 0 002 2z",
     create: "M12 4v16m8-8H4",
+    trophy:
+      "M8 21h8m-4-4v4m-5-17h10v5a5 5 0 0 1-10 0V4Zm10 1h2a2 2 0 0 1 0 4h-2M7 5H5a2 2 0 0 0 0 4h2",
+    shield: "M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3Z",
+    key: "M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm-3 3v11m0-4h3m-3-3h2",
     menu: "M4 6h16M4 12h16M4 18h16",
     chevron: "M19 9l-7 7-7-7",
   };
@@ -267,51 +290,70 @@
           aria-label="close sidebar"
           class="drawer-overlay"
         ></label>
-        <div class="min-h-full w-80 bg-base-200 flex flex-col" id="sidebar-ui">
+        <div class="min-h-full w-72 bg-base-200 flex flex-col" id="sidebar-ui">
           <!-- Logo/Header -->
-          <div class="p-6 border-b border-base-300" id="sidebar-top">
-            <a href="/" class="sidebar-brand-link flex flex-col gap-1">
+          <div class="px-5 py-4 border-b border-base-300" id="sidebar-top">
+            <a href="/" class="sidebar-brand-link flex items-center gap-2">
               <img
                 src="/assets/kiwihacks/kiwi-text.png"
                 alt="KiwiHacks"
                 class="sidebar-brand-logo h-8 w-auto"
               />
-              <p class="sidebar-brand-subtitle text-base-content/70 text-sm">
-                Podium
-              </p>
+              <span class="sidebar-brand-subtitle badge badge-sm shrink-0">Podium</span>
             </a>
           </div>
 
           <!-- Navigation Menu -->
-          <div class="flex-1 p-4">
-            <ul class="menu menu-vertical space-y-2">
-              {#each Object.entries(navOptions) as [path, { label, icon }]}
-                <li>
-                  <a
-                    href={path}
-                    class="flex items-center gap-3 p-3 rounded-lg transition-colors"
-                    class:bg-primary={page.url.pathname === path}
-                    class:text-primary-content={page.url.pathname === path}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d={iconPaths[icon as keyof typeof iconPaths]}
-                      />
-                    </svg>
-                    <span class="font-medium">{label}</span>
-                  </a>
-                </li>
-              {/each}
-            </ul>
+          <div class="flex-1 flex flex-col gap-4 p-3">
+            {#each navGroups as items, groupIndex}
+              {#if items.length > 0}
+                <nav>
+                  {#if groupIndex === 1}
+                    <p class="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-base-content/50">
+                      Organiser
+                    </p>
+                  {/if}
+                  <ul class="menu menu-vertical w-full gap-1 p-0">
+                    {#each items as [path, { label, icon }]}
+                      <li>
+                        <a
+                          href={path}
+                          class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors"
+                          class:bg-primary={page.url.pathname === path}
+                          class:text-primary-content={page.url.pathname === path}
+                          aria-current={page.url.pathname === path ? "page" : undefined}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-5 w-5 shrink-0"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d={iconPaths[icon as keyof typeof iconPaths]}
+                            />
+                          </svg>
+                          <span class="font-medium">{label}</span>
+                        </a>
+                      </li>
+                    {/each}
+                  </ul>
+                </nav>
+              {/if}
+            {/each}
+
+            {#if sidebarEvent}
+              {@const status = eventStatus(sidebarEvent)}
+              <a href="/events/{sidebarEvent.slug}" class="card bg-base-100 mt-auto p-3 gap-1" id="sidebar-event">
+                <span class="text-xs font-semibold uppercase tracking-wide text-base-content/50">Your event</span>
+                <span class="font-semibold leading-tight">{sidebarEvent.name}</span>
+                <span class="badge badge-sm {status.badge}">{status.label}</span>
+              </a>
+            {/if}
           </div>
 
           <!-- Bottom Section -->
