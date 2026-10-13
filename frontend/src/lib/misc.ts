@@ -152,10 +152,9 @@ export function formatDateTime(
   });
 }
 
-/** "Kererū" → "Team Kererū", but "Team Kererū" stays as is. */
+/** A team's name exactly as they wrote it ("The Letter A", "&?"). */
 export function teamLabel(teamName: string | undefined | null): string {
-  if (!teamName) return "";
-  return /^team\b/i.test(teamName) ? teamName : `Team ${teamName}`;
+  return teamName?.trim() ?? "";
 }
 
 /** "12 votes · 5×1st 4×2nd 3×3rd" — shows why points and raw vote count disagree. */
