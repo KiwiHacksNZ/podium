@@ -65,36 +65,35 @@
 
 {#if !isAuthenticated()}
   <!-- Unauthenticated: event-first landing — no login wall -->
-  <div class="max-w-6xl mx-auto space-y-8">
-    <!-- Hero -->
-    <div class="card bg-base-100 shadow-lg">
-      <div class="card-body flex flex-col items-center text-center gap-5 py-8">
-        <img
-          src="/assets/kiwihacks/kiwi-logo.png"
-          alt="KiwiHacks mascot"
-          class="w-40 md:w-48 object-contain select-none"
-        />
-        <img
-          src="/assets/kiwihacks/kiwi-text.png"
-          alt="Kiwihacks"
-          class="w-72 md:w-[28rem] object-contain select-none"
-        />
-        <p class="mono text-lg text-base-content/80">
-          {officialEvents[0]?.description ||
-            "KiwiHacks Podium"}
-        </p>
-
-        <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-primary/30 rounded-2xl border border-base-300">
-          <div class="font-medium">Project submissions</div>
-          <div class="font-medium">Peer voting</div>
-          <div class="font-medium">Live leaderboard</div>
-        </div>
-
-        <a href="/login" class="btn btn-primary btn-lg mt-1">Sign in to participate</a>
+  <div class="max-w-5xl mx-auto space-y-12">
+    <section class="flex flex-col items-center gap-4 pt-4 text-center">
+      <img
+        src="/assets/kiwihacks/kiwi-logo.png"
+        alt=""
+        class="w-28 md:w-32 object-contain select-none"
+      />
+      <img
+        src="/assets/kiwihacks/kiwi-text.png"
+        alt="KiwiHacks"
+        class="w-60 md:w-72 object-contain select-none"
+      />
+      <h1 class="max-w-xl text-2xl md:text-3xl">
+        Where KiwiHacks projects get shown off, judged and voted on.
+      </h1>
+      <p class="max-w-lg text-base-content/70">
+        Submit your team's project, judges score it, and everyone at the event picks their
+        favourites.
+      </p>
+      <div class="mt-2 flex flex-wrap justify-center gap-3">
+        <a href="/login" class="btn btn-primary">Sign in</a>
+        <a href="/past-events" class="btn btn-outline">See past results</a>
       </div>
-    </div>
+    </section>
 
-    <OfficialEventsDisplay events={officialEvents} {loading} />
+    <section class="space-y-4">
+      <h2 class="text-xl">Events</h2>
+      <OfficialEventsDisplay events={officialEvents} {loading} />
+    </section>
   </div>
 {:else}
   <!-- Authenticated dashboard -->
