@@ -52,8 +52,10 @@ export type EventPrivate = {
     phase: string;
     demo_links_optional: boolean;
     require_ysws_pii: boolean;
+    require_ai_declaration: boolean;
     judging_open: boolean;
     voting_open: boolean;
+    is_past: boolean;
     max_votes_per_user: number;
     finalist_count: number;
     repo_validation: string;
@@ -76,12 +78,26 @@ export type EventPublic = {
     phase: string;
     demo_links_optional: boolean;
     require_ysws_pii: boolean;
+    require_ai_declaration: boolean;
     judging_open: boolean;
     voting_open: boolean;
+    is_past: boolean;
     max_votes_per_user: number;
     finalist_count: number;
     repo_validation: string;
     demo_validation: string;
+};
+
+export type EventSeriesCreate = {
+    name: string;
+    slug?: (string | null);
+};
+
+export type EventSeriesPublic = {
+    id: string;
+    slug: string;
+    name: string;
+    is_current: boolean;
 };
 
 /**
@@ -93,8 +109,10 @@ export type EventUpdate = {
     phase?: (string | null);
     judging_open?: (boolean | null);
     voting_open?: (boolean | null);
+    is_past?: (boolean | null);
     demo_links_optional?: (boolean | null);
     require_ysws_pii?: (boolean | null);
+    require_ai_declaration?: (boolean | null);
     repo_validation?: (string | null);
     demo_validation?: (string | null);
     custom_validator?: (string | null);
@@ -145,11 +163,14 @@ export type JudgeEmail = {
 export type JudgeProject = {
     id: string;
     name: string;
+    team_name: string;
     repo: string;
     demo: string;
     description: string;
     image_url: string;
     owner_display_name: string;
+    ai_declaration: string;
+    ai_under_limit: (boolean | null);
     my_score?: (JudgeScorePublic | null);
 };
 
@@ -163,6 +184,7 @@ export type JudgeProjects = {
 export type JudgeResult = {
     project_id: string;
     name: string;
+    team_name: string;
     judge_score: number;
     judge_count: number;
     is_finalist: boolean;
@@ -215,16 +237,39 @@ export type Page_UserSummary_ = {
     pages: number;
 };
 
+export type PastEvent = {
+    id: string;
+    name: string;
+    slug: string;
+    description: string;
+    phase: string;
+    demo_links_optional: boolean;
+    require_ysws_pii: boolean;
+    require_ai_declaration: boolean;
+    judging_open: boolean;
+    voting_open: boolean;
+    is_past: boolean;
+    max_votes_per_user: number;
+    finalist_count: number;
+    repo_validation: string;
+    demo_validation: string;
+    series: string;
+    series_name: string;
+};
+
 /**
  * Request body for creating a project.
  */
 export type ProjectCreate = {
     name: string;
+    team_name?: string;
     repo: string;
     image_url: string;
     demo?: string;
     description?: string;
     hours_spent?: number;
+    ai_declaration?: string;
+    ai_under_limit?: (boolean | null);
     event_id: string;
 };
 
@@ -234,11 +279,15 @@ export type ProjectCreate = {
 export type ProjectPrivate = {
     id: string;
     name: string;
+    team_name?: string;
     repo: string;
     image_url: string;
     demo: string;
     description: string;
     points: number;
+    rank_counts?: Array<(number)>;
+    ai_declaration?: string;
+    ai_under_limit?: (boolean | null);
     is_finalist?: boolean;
     owner_id: string;
     owner_display_name?: string;
@@ -257,11 +306,15 @@ export type ProjectPrivate = {
 export type ProjectPublic = {
     id: string;
     name: string;
+    team_name?: string;
     repo: string;
     image_url: string;
     demo: string;
     description: string;
     points: number;
+    rank_counts?: Array<(number)>;
+    ai_declaration?: string;
+    ai_under_limit?: (boolean | null);
     is_finalist?: boolean;
     owner_id: string;
     owner_display_name?: string;
@@ -273,11 +326,14 @@ export type ProjectPublic = {
  */
 export type ProjectUpdate = {
     name?: (string | null);
+    team_name?: (string | null);
     repo?: (string | null);
     image_url?: (string | null);
     demo?: (string | null);
     description?: (string | null);
     hours_spent?: (number | null);
+    ai_declaration?: (string | null);
+    ai_under_limit?: (boolean | null);
 };
 
 export type RedeemJudgeCode = {
@@ -302,8 +358,10 @@ export type SuperadminEventUpdate = {
     phase?: (string | null);
     judging_open?: (boolean | null);
     voting_open?: (boolean | null);
+    is_past?: (boolean | null);
     demo_links_optional?: (boolean | null);
     require_ysws_pii?: (boolean | null);
+    require_ai_declaration?: (boolean | null);
     repo_validation?: (string | null);
     demo_validation?: (string | null);
     custom_validator?: (string | null);
@@ -609,6 +667,10 @@ export type ListOfficialEventsEventsOfficialGetResponse = (Array<EventPublic>);
 
 export type ListOfficialEventsEventsOfficialGetError = unknown;
 
+export type ListPastEventsEventsPastGetResponse = (Array<PastEvent>);
+
+export type ListPastEventsEventsPastGetError = unknown;
+
 export type GetEventEndpointEventsEventIdGetData = {
     path: {
         event_id: string;
@@ -646,6 +708,10 @@ export type GetEventProjectsEventsEventIdProjectsGetData = {
         event_id: string;
     };
     query: {
+        /**
+         * Include non-finalists while voting is open
+         */
+        all_projects?: boolean;
         /**
          * Sort by points if true
          */
@@ -1051,6 +1117,28 @@ export type UpdateEventSuperadminEventsEventIdPatchData = {
 export type UpdateEventSuperadminEventsEventIdPatchResponse = (EventPrivate);
 
 export type UpdateEventSuperadminEventsEventIdPatchError = (HTTPValidationError);
+
+export type ListSeriesSuperadminSeriesGetResponse = (Array<EventSeriesPublic>);
+
+export type ListSeriesSuperadminSeriesGetError = unknown;
+
+export type CreateSeriesSuperadminSeriesPostData = {
+    body: EventSeriesCreate;
+};
+
+export type CreateSeriesSuperadminSeriesPostResponse = (EventSeriesPublic);
+
+export type CreateSeriesSuperadminSeriesPostError = (HTTPValidationError);
+
+export type MakeSeriesCurrentSuperadminSeriesSeriesIdCurrentPostData = {
+    path: {
+        series_id: string;
+    };
+};
+
+export type MakeSeriesCurrentSuperadminSeriesSeriesIdCurrentPostResponse = (EventSeriesPublic);
+
+export type MakeSeriesCurrentSuperadminSeriesSeriesIdCurrentPostError = (HTTPValidationError);
 
 export type ListUsersSuperadminUsersGetData = {
     query?: {

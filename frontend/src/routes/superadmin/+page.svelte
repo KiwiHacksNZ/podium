@@ -3,7 +3,7 @@
   import { SuperadminService, client } from "$lib/client/sdk.gen";
   import { authHeaders, getAuthenticatedUser, isAuthenticated } from "$lib/user.svelte";
   import { env } from "$env/dynamic/public";
-  import type { EventPrivate } from "$lib/client/types.gen";
+  import type { EventPrivate, EventSeriesPublic } from "$lib/client/types.gen";
   import { toast } from "svelte-sonner";
   import { formatDate } from "$lib/misc";
 
@@ -29,8 +29,59 @@
   let usersPage = $state<Page<UserSummary>>({ items: [], total: 0, page: 1, size: 25, pages: 0 });
   let loading = $state(true);
 
+  // Series
+  let series = $state<EventSeriesPublic[]>([]);
+  let newSeriesName = $state("");
+  let creatingSeries = $state(false);
+  const seriesSlugs = $derived(new Set(series.map((s) => s.slug)));
+
+  /** The event's series is whichever flag names a known series. */
+  function seriesOf(flagsCsv: string | undefined): string {
+    const flags = (flagsCsv ?? "").split(",").map((f) => f.trim()).filter(Boolean);
+    return flags.find((f) => seriesSlugs.has(f)) ?? "";
+  }
+  /** Swap the series flag in a flags CSV, keeping any other flags. */
+  function withSeries(flagsCsv: string, slug: string): string {
+    const others = flagsCsv.split(",").map((f) => f.trim()).filter((f) => f && !seriesSlugs.has(f));
+    return [slug, ...others].filter(Boolean).join(",");
+  }
+  function seriesName(slug: string): string {
+    return series.find((s) => s.slug === slug)?.name ?? slug;
+  }
+
+  async function loadSeries() {
+    const { data, error } = await SuperadminService.listSeriesSuperadminSeriesGet({ throwOnError: false });
+    if (error) toast.error("Failed to load series");
+    else if (data) series = data;
+  }
+
+  async function createSeries() {
+    if (!newSeriesName.trim()) return;
+    creatingSeries = true;
+    const { data, error } = await SuperadminService.createSeriesSuperadminSeriesPost({
+      body: { name: newSeriesName.trim() },
+      throwOnError: false,
+    });
+    creatingSeries = false;
+    if (error) { toast.error((error as { detail?: string }).detail ?? "Failed to create series"); return; }
+    toast.success(`Series "${data!.name}" created`);
+    newSeriesName = "";
+    await loadSeries();
+  }
+
+  async function makeCurrent(s: EventSeriesPublic) {
+    const { error } = await SuperadminService.makeSeriesCurrentSuperadminSeriesSeriesIdCurrentPost({
+      path: { series_id: s.id },
+      throwOnError: false,
+    });
+    if (error) { toast.error("Failed to switch series"); return; }
+    toast.success(`${s.name} is now the current series`);
+    await loadSeries();
+  }
+
   // Create form
   let newName = $state("");
+  let newSeries = $state("");
   let newDesc = $state("");
   let newPhase = $state("draft");
   let creating = $state(false);
@@ -42,6 +93,8 @@
   let editDemoValidation = $state("");
   let editCustomValidator = $state("");
   let editRequireYswsPii = $state(false);
+  let editRequireAi = $state(false);
+  let editSeries = $state("");
   let editFeatureFlags = $state("");
   let saving = $state(false);
   let exportingProjectsEventId = $state<string | null>(null);
@@ -72,7 +125,8 @@
   }
 
   async function load() {
-    await Promise.all([loadEvents(1), loadUsers(1)]);
+    await Promise.all([loadEvents(1), loadUsers(1), loadSeries()]);
+    newSeries = series.find((s) => s.is_current)?.slug ?? "";
     loading = false;
   }
 
@@ -80,7 +134,7 @@
     if (!newName.trim()) return;
     creating = true;
     const { data, error } = await SuperadminService.createEventSuperadminEventsPost({
-      body: { name: newName.trim(), description: newDesc.trim(), phase: newPhase },
+      body: { name: newName.trim(), description: newDesc.trim(), phase: newPhase, feature_flags_csv: newSeries },
       throwOnError: false,
     });
     creating = false;
@@ -97,7 +151,9 @@
     editDemoValidation = event.demo_validation;
     editCustomValidator = event.custom_validator ?? "";
     editRequireYswsPii = event.require_ysws_pii;
+    editRequireAi = event.require_ai_declaration;
     editFeatureFlags = event.feature_flags_csv ?? "";
+    editSeries = seriesOf(event.feature_flags_csv);
   }
 
   async function saveEdit() {
@@ -111,6 +167,7 @@
     const newCustom = editCustomValidator.trim() || null;
     if (newCustom !== (editing.custom_validator ?? null)) body.custom_validator = newCustom;
     if (editRequireYswsPii !== editing.require_ysws_pii) body.require_ysws_pii = editRequireYswsPii;
+    if (editRequireAi !== editing.require_ai_declaration) body.require_ai_declaration = editRequireAi;
     if (editFeatureFlags !== (editing.feature_flags_csv ?? "")) body.feature_flags_csv = editFeatureFlags;
 
     if (Object.keys(body).length > 0) {
@@ -226,6 +283,45 @@
 <div class="max-w-5xl mx-auto space-y-8">
   <h1 class="text-3xl font-bold">Superadmin</h1>
 
+  <!-- Event Series -->
+  <div class="card bg-base-100 shadow-lg">
+    <div class="card-body">
+      <h2 class="card-title">Event Series</h2>
+      <p class="text-sm text-base-content/70">
+        A series is a flagship event plus its satellites. Events in the current series
+        are the ones attendees see and join.
+      </p>
+      {#if series.length > 0}
+        <ul class="flex flex-col gap-2 mt-2">
+          {#each series as s (s.id)}
+            <li class="flex items-center justify-between gap-3 rounded-box bg-base-200 px-4 py-3">
+              <span class="flex items-center gap-3 min-w-0">
+                <span class="font-semibold truncate">{s.name}</span>
+                <span class="font-mono text-xs opacity-60">{s.slug}</span>
+              </span>
+              {#if s.is_current}
+                <span class="badge badge-success shrink-0">Current</span>
+              {:else}
+                <button class="btn btn-outline btn-xs shrink-0" onclick={() => makeCurrent(s)}>Make current</button>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      {:else if !loading}
+        <p class="text-sm text-base-content/50 mt-2">
+          No series yet — the current series comes from the ACTIVE_EVENT_SERIES setting until you make one current.
+        </p>
+      {/if}
+      <div class="flex flex-wrap gap-3 mt-2">
+        <input class="input input-bordered flex-1 min-w-48" placeholder="New series name, e.g. Nova 2026" bind:value={newSeriesName}
+          onkeydown={(e) => e.key === "Enter" && createSeries()} />
+        <button class="btn btn-primary" onclick={createSeries} disabled={creatingSeries || !newSeriesName.trim()}>
+          {creatingSeries ? "Creating…" : "Create series"}
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Create Event -->
   <div class="card bg-base-100 shadow-lg">
     <div class="card-body">
@@ -235,6 +331,10 @@
         <input class="input input-bordered flex-1 min-w-48" placeholder="Description" bind:value={newDesc} />
         <select class="select select-bordered" bind:value={newPhase}>
           {#each phases as p}<option value={p}>{p}</option>{/each}
+        </select>
+        <select class="select select-bordered" bind:value={newSeries} aria-label="Series">
+          <option value="">No series</option>
+          {#each series as s (s.id)}<option value={s.slug}>{s.name}</option>{/each}
         </select>
         <button class="btn btn-primary" onclick={createEvent} disabled={creating || !newName.trim()}>
           {creating ? "Creating…" : "Create"}
@@ -255,7 +355,7 @@
         <div class="overflow-x-auto">
           <table class="table table-zebra w-full">
             <thead>
-              <tr><th>Name</th><th>Phase</th><th>Repo</th><th>Demo</th><th>Flags</th><th>Owner</th><th>Deleted</th><th></th></tr>
+              <tr><th>Name</th><th>Phase</th><th>Repo</th><th>Demo</th><th>Series</th><th>Owner</th><th>Deleted</th><th></th></tr>
             </thead>
             <tbody>
               {#each eventsPage.items as event (event.id)}
@@ -270,7 +370,13 @@
                   <td><span class="badge {phaseBadge[event.phase] ?? 'badge-ghost'}">{event.phase}</span></td>
                   <td class="font-mono text-sm">{event.repo_validation}</td>
                   <td class="font-mono text-sm">{event.demo_validation}</td>
-                  <td class="font-mono text-xs">{event.feature_flags_csv || "—"}</td>
+                  <td class="text-sm">
+                    {#if seriesOf(event.feature_flags_csv)}
+                      {seriesName(seriesOf(event.feature_flags_csv))}
+                    {:else}
+                      <span class="font-mono text-xs opacity-60">{event.feature_flags_csv || "—"}</span>
+                    {/if}
+                  </td>
                   <td class="text-sm">{usersPage.items.find((u) => u.id === event.owner_id)?.email ?? event.owner_id}</td>
                   <td>{formatDate(event.deleted_at)}</td>
                   <td class="flex gap-2">
@@ -289,38 +395,53 @@
                 </tr>
                 {#if editing?.id === event.id}
                   <tr>
-                    <td colspan="7">
+                    <td colspan="8">
                       <div class="card bg-base-200 my-2">
                         <div class="card-body gap-3 py-4">
                           <h3 class="font-semibold">Edit: {editing.name}</h3>
                           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <label class="form-control">
+                            <label class="form-control flex flex-col">
                               <span class="label-text mb-1">Owner email</span>
                               <input class="input input-bordered input-sm" bind:value={editOwnerEmail} />
                             </label>
-                            <label class="form-control">
+                            <label class="form-control flex flex-col">
                               <span class="label-text mb-1">Repo validation</span>
                               <select class="select select-bordered select-sm" bind:value={editRepoValidation}>
                                 {#each repoValidations as v}<option value={v}>{v}</option>{/each}
                               </select>
                             </label>
-                            <label class="form-control">
+                            <label class="form-control flex flex-col">
                               <span class="label-text mb-1">Demo validation</span>
                               <select class="select select-bordered select-sm" bind:value={editDemoValidation}>
                                 {#each demoValidations as v}<option value={v}>{v}</option>{/each}
                               </select>
                             </label>
-                            <label class="form-control">
+                            <label class="form-control flex flex-col">
                               <span class="label-text mb-1">Custom validator key</span>
                               <input class="input input-bordered input-sm font-mono" placeholder="(none)" bind:value={editCustomValidator} />
                             </label>
-                            <label class="form-control">
+                            <label class="form-control flex flex-col">
+                              <span class="label-text mb-1">Series</span>
+                              <select
+                                class="select select-bordered select-sm"
+                                bind:value={editSeries}
+                                onchange={() => (editFeatureFlags = withSeries(editFeatureFlags, editSeries))}
+                              >
+                                <option value="">No series</option>
+                                {#each series as s (s.id)}<option value={s.slug}>{s.name}</option>{/each}
+                              </select>
+                            </label>
+                            <label class="form-control flex flex-col">
                               <span class="label-text mb-1">Feature Flags CSV (e.g. 'flagship')</span>
                               <input class="input input-bordered input-sm font-mono" placeholder="(none)" bind:value={editFeatureFlags} />
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer">
                               <input type="checkbox" class="checkbox checkbox-sm" bind:checked={editRequireYswsPii} />
                               <span class="label-text">Require YSWS PII (address + DOB)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                              <input type="checkbox" class="checkbox checkbox-sm" bind:checked={editRequireAi} />
+                              <span class="label-text">Require AI declaration (30% AI code limit)</span>
                             </label>
                           </div>
                           <div class="flex gap-2">

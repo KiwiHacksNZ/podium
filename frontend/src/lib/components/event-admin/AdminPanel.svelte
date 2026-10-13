@@ -190,6 +190,8 @@
         onUpdate={(updated) => {
           event.judging_open = updated.judging_open;
           event.voting_open = updated.voting_open;
+          event.is_past = updated.is_past;
+          event.require_ai_declaration = updated.require_ai_declaration;
         }}
       />
 

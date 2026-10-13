@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { ProjectPrivate, ProjectPublic } from "$lib/client/types.gen";
   import { onMount } from "svelte";
+  import { teamLabel } from "$lib/misc";
+  import AiDeclaration from "./AiDeclaration.svelte";
   interface Props {
     project: ProjectPrivate | ProjectPublic;
     isSelected: boolean;
@@ -86,6 +88,16 @@
       <h2 class="card-title break-words overflow-x-auto">
         {project.name}
       </h2>
+      {#if project.team_name}
+        <p class="text-sm font-semibold opacity-70 -mt-1">{teamLabel(project.team_name)}</p>
+      {/if}
+      <div>
+        <AiDeclaration
+          declaration={project.ai_declaration}
+          underLimit={project.ai_under_limit}
+          compact
+        />
+      </div>
       <div class="divider my-0"></div>
       <p class="break-words text-sm">{project.description}</p>
       {#if loadingCredits}

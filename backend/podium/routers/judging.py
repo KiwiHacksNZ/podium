@@ -65,11 +65,14 @@ class JudgeProject(BaseModel):
 
     id: UUID
     name: str
+    team_name: str
     repo: str
     demo: str
     description: str
     image_url: str
     owner_display_name: str
+    ai_declaration: str
+    ai_under_limit: bool | None
     my_score: JudgeScorePublic | None = None
 
 
@@ -96,6 +99,8 @@ class JudgeResult(BaseModel):
 
     project_id: UUID
     name: str
+    team_name: str
+    ai_under_limit: bool | None
     judge_score: float
     judge_count: int
     is_finalist: bool
@@ -241,7 +246,8 @@ async def list_projects_to_judge(
         select(Project)
         .where(Project.event_id == event_id)
         .options(selectinload(Project.owner))
-        .order_by(Project.name),
+        # Judges find projects by team, so group named teams first, A-Z
+        .order_by(Project.team_name == "", Project.team_name, Project.name),
     )
     my_scores = {
         s.project_id: s
@@ -258,11 +264,14 @@ async def list_projects_to_judge(
             JudgeProject(
                 id=p.id,
                 name=p.name,
+                team_name=p.team_name,
                 repo=p.repo,
                 demo=p.demo,
                 description=p.description,
                 image_url=p.image_url,
                 owner_display_name=p.owner_display_name,
+                ai_declaration=p.ai_declaration,
+                ai_under_limit=p.ai_under_limit,
                 my_score=(
                     _score_to_public(my_scores[p.id]) if p.id in my_scores else None
                 ),
@@ -360,6 +369,8 @@ async def judging_results(
         JudgeResult(
             project_id=p.id,
             name=p.name,
+            team_name=p.team_name,
+            ai_under_limit=p.ai_under_limit,
             judge_score=p.judge_score,
             judge_count=p.judge_count,
             is_finalist=p.is_finalist,

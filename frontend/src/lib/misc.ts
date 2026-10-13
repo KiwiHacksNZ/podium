@@ -151,3 +151,21 @@ export function formatDateTime(
     hour12: false,
   });
 }
+
+/** "Kererū" → "Team Kererū", but "Team Kererū" stays as is. */
+export function teamLabel(teamName: string | undefined | null): string {
+  if (!teamName) return "";
+  return /^team\b/i.test(teamName) ? teamName : `Team ${teamName}`;
+}
+
+/** "12 votes · 5×1st 4×2nd 3×3rd" — shows why points and raw vote count disagree. */
+export function voteBreakdown(rankCounts: number[] | undefined): string {
+  const counts = (rankCounts ?? []).slice(0, 3);
+  const total = counts.reduce((a, b) => a + b, 0);
+  const ordinals = ["1st", "2nd", "3rd"];
+  const parts = counts.map((n, i) => `${n}×${ordinals[i]}`);
+  return `${total} vote${total === 1 ? "" : "s"} · ${parts.join(" ")}`;
+}
+
+/** Projects declare whether AI wrote less than this share of their code (matches the backend). */
+export const AI_CODE_LIMIT_PERCENT = 30;

@@ -46,13 +46,18 @@ The phase is changed by the event owner via the admin panel UI or `PATCH /events
 
 ## Event Series
 
-Events are grouped into a **series** — a flagship event plus its satellites (e.g., "Scrapyard 2025"). Only one series is active at a time, controlled by `ACTIVE_EVENT_SERIES` in backend config. Events with matching `feature_flags_csv` appear in the event selector.
+Events are grouped into a **series** — a flagship event plus its satellites (e.g., "Scrapyard 2025"). Superadmins create series and pick the current one on `/superadmin` (the `event_series` table); until one is made current, `ACTIVE_EVENT_SERIES` in backend config is the fallback. Events join a series by carrying its slug in `feature_flags_csv`, and events in the current series appear in the event selector.
 
 Key rules:
 - **One event per user per series** — backend enforces; selecting a new event auto-switches
 - **Events are admin-created** — users select from a list, never create events
 - **All official events are equal** — no UI distinction between flagship and satellites
 - **Past series are read-only** — users can view but not edit old projects
+- **Past events** — organisers flip "Past event" in the admin panel to move an event off the main lists and onto `/past-events`, grouped by series
+
+## AI Declaration
+
+Events can require an AI declaration (`require_ai_declaration`). Every project must then say how AI was used and whether AI wrote less than 30% of its code (`AI_CODE_LIMIT_PERCENT`). Projects over the limit are still accepted, but flagged to judges and organisers.
 
 ## Validation System
 

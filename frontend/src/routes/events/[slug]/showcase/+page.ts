@@ -17,6 +17,8 @@ export const load: PageLoad = async ({ fetch, parent }) => {
     },
     query: {
       leaderboard: event.phase === "closed",
+      // Finalists-only filtering is for the ballot; the showcase shows everyone
+      all_projects: true,
     },
     throwOnError: false,
   });

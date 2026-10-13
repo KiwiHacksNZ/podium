@@ -14,11 +14,14 @@ export type JudgeScore = {
 export type JudgeProject = {
   id: string;
   name: string;
+  team_name?: string;
   repo?: string | null;
   demo?: string | null;
   description?: string | null;
   image_url?: string | null;
   owner_display_name?: string | null;
+  ai_declaration?: string;
+  ai_under_limit?: boolean | null;
   my_score: JudgeScore | null;
 };
 

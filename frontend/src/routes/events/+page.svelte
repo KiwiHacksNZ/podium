@@ -26,6 +26,10 @@
     closed: "badge-info",
   };
 
+  const currentEvents = $derived(
+    data.events.attending_events.filter((e) => !e.is_past),
+  );
+
   onMount(async () => {
     const res = await EventsService.listOfficialEventsEventsOfficialGet({
       throwOnError: false,
@@ -40,7 +44,7 @@
 </script>
 
 <div class="max-w-6xl mx-auto space-y-8">
-  {#if isAuthenticated() && data.events.attending_events.length > 0}
+  {#if isAuthenticated() && currentEvents.length > 0}
     <!-- Authenticated: show the events the user is attending -->
     <div class="card bg-base-100 shadow-lg">
       <div class="card-body">
@@ -59,7 +63,7 @@
               </tr>
             </thead>
             <tbody>
-              {#each data.events.attending_events as event (event.id)}
+              {#each currentEvents as event (event.id)}
                 <tr>
                   <td>
                     <a
@@ -106,4 +110,8 @@
 
     <OfficialEventsDisplay events={officialEvents} loading={loadingOfficial} error={loadError} />
   {/if}
+
+  <p class="text-center">
+    <a href="/past-events" class="link link-primary">Browse past events and results →</a>
+  </p>
 </div>

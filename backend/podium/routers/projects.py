@@ -38,6 +38,7 @@ from podium.cache import cache_delete
 from podium.validators import itch, repo as repo_validator, CUSTOM_VALIDATORS
 from podium.validators.base import ValidationResult
 from podium.constants import (
+    AI_CODE_LIMIT_PERCENT,
     BAD_AUTH,
     BAD_ACCESS,
     RepoValidation,
@@ -72,6 +73,24 @@ def validate_demo_field(demo: str | None, event: Event) -> None:
     """Raise 422 if demo is required but missing."""
     if not event.demo_links_optional and not (demo and demo.strip()):
         raise HTTPException(status_code=422, detail="Demo URL is required for this event")
+
+
+def validate_ai_declaration(
+    declaration: str | None, under_limit: bool | None, event: Event
+) -> None:
+    """Raise 422 if the event requires an AI declaration and it's incomplete."""
+    if not event.require_ai_declaration:
+        return
+    if not (declaration and declaration.strip()):
+        raise HTTPException(
+            status_code=422,
+            detail="Describe how you used AI (write 'None' if you didn't use any)",
+        )
+    if under_limit is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Say whether AI wrote less than {AI_CODE_LIMIT_PERCENT}% of your code",
+        )
 
 
 def _public_project_image_url(request: Request, filename: str) -> str:
@@ -304,6 +323,7 @@ async def create_project(
         raise HTTPException(status_code=404, detail="Event not found")
 
     validate_demo_field(project.demo, event)
+    validate_ai_declaration(project.ai_declaration, project.ai_under_limit, event)
 
     if user not in event.attendees:
         raise HTTPException(status_code=403, detail="Owner not part of event")
@@ -497,6 +517,16 @@ async def update_project(
         raise HTTPException(status_code=404, detail="Event not found")
 
     validate_demo_field(project_update.demo, event)
+    # Check the declaration as it will be after this update
+    validate_ai_declaration(
+        project_update.ai_declaration
+        if project_update.ai_declaration is not None
+        else project.ai_declaration,
+        project_update.ai_under_limit
+        if project_update.ai_under_limit is not None
+        else project.ai_under_limit,
+        event,
+    )
 
     update_data = project_update.model_dump(exclude_unset=True, exclude_none=True)
     project.sqlmodel_update(update_data)

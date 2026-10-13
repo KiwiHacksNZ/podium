@@ -88,6 +88,7 @@
       "/": { label: "Home", icon: "home" },
       "/projects": { label: "Projects", icon: "projects" },
       "/events": { label: "Events", icon: "events" },
+      "/past-events": { label: "Past Events", icon: "events" },
     };
     if (currentUser.is_superadmin) {
       return {
@@ -405,6 +406,7 @@
       </div>
       <div class="navbar-end gap-2">
         <a href="/events" class="btn btn-ghost btn-sm">Events</a>
+        <a href="/past-events" class="btn btn-ghost btn-sm hidden sm:inline-flex">Past Events</a>
         <a
           href="https://nova.kiwihacks.org"
           target="_blank"

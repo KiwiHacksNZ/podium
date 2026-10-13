@@ -8,6 +8,9 @@ Slug = Annotated[
     str, StringConstraints(min_length=1, max_length=50, pattern=r"[-a-z0-9]+")
 ]
 
+# Projects declare whether AI wrote less than this share of their code
+AI_CODE_LIMIT_PERCENT = 30
+
 BAD_AUTH = HTTPException(status_code=401, detail="Invalid authentication credentials")
 BAD_ACCESS = HTTPException(
     status_code=403, detail="You don't have permission to do this"
