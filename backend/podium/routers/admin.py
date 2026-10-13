@@ -35,7 +35,7 @@ from podium.db.postgres import (
     scalar_all,
 )
 from podium.routers.auth import get_current_user
-from podium.constants import BAD_ACCESS, FINALIST_COUNT
+from podium.constants import BAD_ACCESS, FINALIST_COUNT, EventPhase
 from podium.cache import cache_delete
 
 router = APIRouter(prefix="/events/admin", tags=["events"])
@@ -168,6 +168,14 @@ async def update_event_admin(
 
     for field, value in update.model_dump(exclude_unset=True).items():
         setattr(event, field, value)
+
+    # Moving off the voting phase ends voting, unless this same request says otherwise
+    if (
+        update.phase is not None
+        and update.phase != EventPhase.VOTING
+        and update.voting_open is None
+    ):
+        event.voting_open = False
 
     await session.commit()
     await session.refresh(event)

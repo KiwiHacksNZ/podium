@@ -336,7 +336,14 @@ async def get_event_projects(
         ),
     )
 
-    if not all_projects and event.voting_open and any(p.is_finalist for p in projects):
+    # Finalist-only is a ballot concern: it shapes what attendees can rank while
+    # voting runs. Results are served after voting closes, so they list everyone.
+    if (
+        not leaderboard
+        and not all_projects
+        and event.voting_open
+        and any(p.is_finalist for p in projects)
+    ):
         projects = [p for p in projects if p.is_finalist]
 
     if leaderboard:
