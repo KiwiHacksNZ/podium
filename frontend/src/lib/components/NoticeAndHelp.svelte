@@ -26,33 +26,19 @@
 <!-- Dismissible Notice -->
 {#if noticeVisible}
   <div
-    class="bg-info text-center rounded-xl max-w-2xl mx-auto mb-6 p-4 relative"
+    class="mx-auto mb-4 flex max-w-2xl items-center justify-center gap-2 rounded-full border border-info/40 bg-info/10 py-1.5 pl-4 pr-1.5 text-sm"
     id="help-notice"
   >
+    <span class="text-base-content/80">Something not working? Ask an organiser for help.</span>
     <button
       onclick={dismissNotice}
-      class="btn btn-sm btn-circle btn-ghost absolute top-2 right-2"
+      class="btn btn-xs btn-circle btn-ghost"
       aria-label="Dismiss notice"
     >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="h-4 w-4"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M6 18L18 6M6 6l12 12"
-        />
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
       </svg>
     </button>
-    <p class="text-info-content pr-8">
-      If Podium is not working and you need urgent help, ask an organiser for
-      help.
-    </p>
   </div>
 {/if}
 

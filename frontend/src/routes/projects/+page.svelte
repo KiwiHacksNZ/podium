@@ -5,18 +5,16 @@
   let { data }: { data: PageData } = $props();
 </script>
 
-<div class="mx-auto max-w-7xl space-y-5 px-1 sm:px-0">
-  <h1 class="text-4xl sm:text-5xl font-black tracking-tight text-base-content">Your Projects</h1>
+<div class="mx-auto max-w-7xl space-y-6 px-1 sm:px-0">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <h1 class="text-4xl sm:text-5xl font-black tracking-tight text-base-content">Your Projects</h1>
+    <a href="/projects/join" class="btn btn-outline btn-sm">Join a team</a>
+  </div>
 
   {#if data.projects.length > 0}
-    <div class="grid grid-cols-1 items-start justify-items-center gap-4 md:grid-cols-2 md:justify-items-start xl:grid-cols-3 md:gap-5">
+    <div class="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
       {#each data.projects as project (project.id)}
-        <div class="w-full max-w-[360px]">
-          <ProjectCardWrapper
-            {project}
-            events={data.events}
-          />
-        </div>
+        <ProjectCardWrapper {project} events={data.events} />
       {/each}
     </div>
   {:else}

@@ -89,7 +89,7 @@
   <div class="container mx-auto max-w-3xl p-4 sm:p-6">
     <section class="rounded-box bg-success text-success-content p-8 text-center">
       <span
-        class="inline-flex items-center rounded-full bg-success-content text-success px-3 py-1 text-sm font-extrabold uppercase tracking-wide"
+        class="inline-flex items-center rounded-full bg-success-content text-success px-3 py-1 text-sm font-extrabold"
       >
         Vote counted
       </span>
@@ -103,7 +103,7 @@
   <div class="container mx-auto max-w-5xl p-4 sm:p-6 flex flex-col gap-6">
     <section class="rounded-box bg-info text-info-content p-5 sm:p-6">
       <span
-        class="inline-flex items-center rounded-full bg-info-content text-info px-3 py-1 text-sm font-extrabold uppercase tracking-wide"
+        class="inline-flex items-center rounded-full bg-info-content text-info px-3 py-1 text-sm font-extrabold"
       >
         How to vote
       </span>
@@ -157,7 +157,7 @@
               )}"
             >
               <span
-                class="rounded-full bg-black/15 px-3 py-1 text-xs font-extrabold uppercase tracking-wide"
+                class="rounded-full bg-black/15 px-3 py-1 text-xs font-extrabold"
               >
                 {ordinal(index)}
               </span>

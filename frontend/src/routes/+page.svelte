@@ -105,7 +105,7 @@
       </h1>
     </div>
 
-    <div class="min-h-[60vh] flex items-center justify-center">
+    <div class="sm:min-h-[60vh] flex items-start sm:items-center justify-center">
       {#if loading}
         <div class="flex flex-col items-center gap-4">
           <span class="loading loading-spinner loading-lg text-primary"></span>

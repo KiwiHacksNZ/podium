@@ -81,8 +81,12 @@
       <span class="loading loading-spinner loading-lg text-primary"></span>
     </div>
   {:else if events.length === 0}
-    <div class="alert alert-warning">
-      <span>No active events at this time. Check back soon!</span>
+    <div class="rounded-box bg-base-200 p-5 text-center">
+      <p class="font-semibold">No events are running right now.</p>
+      <p class="mt-1 text-sm text-base-content/70">
+        Check back closer to the next hackathon, or
+        <a href="/past-events" class="link link-primary">see past results</a>.
+      </p>
     </div>
   {:else}
     <div class="space-y-4">

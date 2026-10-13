@@ -297,6 +297,8 @@ export type ProjectPrivate = {
     collaborator_ids?: Array<(string)>;
     hours_spent: number;
     event_id: string;
+    event_name?: string;
+    event_slug?: string;
     validation_status: string;
     validation_message: string;
 };

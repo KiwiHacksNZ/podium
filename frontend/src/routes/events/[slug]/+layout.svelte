@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { page } from "$app/state";
+  import { eventStatus } from "$lib/misc";
+
   let { children, data } = $props();
 
   const eventHeroImages: Record<string, string> = {
@@ -13,25 +16,34 @@
     }
     return "";
   });
+
+  // Only the event's main page gets the full hero; sub-pages (showcase,
+  // ballot, judging, leaderboard) keep a compact header so content is above the fold
+  const isEventHome = $derived(page.url.pathname.replace(/\/$/, "") === `/events/${data.event.slug}`);
+  const status = $derived(eventStatus(data.event));
 </script>
 
-{#if eventHeroImage}
-  <div class="flex justify-center pt-6 pb-2">
-    <img
-      src={eventHeroImage}
-      alt={data.event.name}
-      class="h-28 object-contain"
-    />
+{#if isEventHome}
+  {#if eventHeroImage}
+    <div class="flex justify-center pt-6 pb-2">
+      <img src={eventHeroImage} alt={data.event.name} class="h-20 sm:h-28 object-contain" />
+    </div>
+  {/if}
+
+  <div class="text-center p-4 space-y-2">
+    <h1 class="text-2xl sm:text-3xl font-semibold">{data.event.name}</h1>
+    {#if data.event.description}
+      <p class="mono text-base-content/80">{data.event.description}</p>
+    {/if}
+    <span class="badge {status.badge}">{status.label}</span>
+  </div>
+{:else}
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 pt-4 pb-2">
+    <a href="/events/{data.event.slug}" class="link link-hover text-sm font-semibold text-base-content/80">
+      &larr; {data.event.name}
+    </a>
+    <span class="badge {status.badge}">{status.label}</span>
   </div>
 {/if}
-
-<div class="text-center p-4 space-y-1">
-  <h1 class="text-2xl font-semibold">
-    <a href="/events/{data.event.slug}" class="link hover-link">
-      {data.event.name}
-    </a>
-  </h1>
-  <p class="mono text-base-content/80">{data.event.description}</p>
-</div>
 
 {@render children()}

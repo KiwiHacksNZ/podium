@@ -158,6 +158,10 @@ class ProjectPrivate(ProjectPublic):
     collaborator_ids: list[UUID] = []
     hours_spent: int
     event_id: UUID
+    # Filled in by /projects/mine so the page can link every project's event,
+    # including events the user no longer attends
+    event_name: str = ""
+    event_slug: str = ""
     validation_status: str
     validation_message: str
 
