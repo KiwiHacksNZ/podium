@@ -185,6 +185,7 @@ export type JudgeResult = {
     project_id: string;
     name: string;
     team_name: string;
+    ai_under_limit: (boolean | null);
     judge_score: number;
     judge_count: number;
     is_finalist: boolean;
@@ -1139,6 +1140,10 @@ export type MakeSeriesCurrentSuperadminSeriesSeriesIdCurrentPostData = {
 export type MakeSeriesCurrentSuperadminSeriesSeriesIdCurrentPostResponse = (EventSeriesPublic);
 
 export type MakeSeriesCurrentSuperadminSeriesSeriesIdCurrentPostError = (HTTPValidationError);
+
+export type ClearCurrentSeriesSuperadminSeriesCurrentDeleteResponse = (unknown);
+
+export type ClearCurrentSeriesSuperadminSeriesCurrentDeleteError = unknown;
 
 export type ListUsersSuperadminUsersGetData = {
     query?: {

@@ -45,6 +45,21 @@
     const others = flagsCsv.split(",").map((f) => f.trim()).filter((f) => f && !seriesSlugs.has(f));
     return [slug, ...others].filter(Boolean).join(",");
   }
+  // Events table grouped by series: current series first, then A-Z, then
+  // events with no series
+  const eventGroups = $derived.by(() => {
+    const groups = new Map<string, EventPrivate[]>();
+    for (const e of eventsPage.items) {
+      const slug = seriesOf(e.feature_flags_csv);
+      groups.set(slug, [...(groups.get(slug) ?? []), e]);
+    }
+    const rank = (slug: string) =>
+      slug === "" ? 2 : series.find((s) => s.slug === slug)?.is_current ? 0 : 1;
+    return [...groups.entries()]
+      .map(([slug, events]) => ({ slug, events }))
+      .sort((a, b) => rank(a.slug) - rank(b.slug) || seriesName(a.slug).localeCompare(seriesName(b.slug)));
+  });
+
   function seriesName(slug: string): string {
     return series.find((s) => s.slug === slug)?.name ?? slug;
   }
@@ -79,6 +94,14 @@
     await loadSeries();
   }
 
+  async function clearCurrent(s: EventSeriesPublic) {
+    if (!confirm(`Unset ${s.name} as the current series? The event list falls back to the ACTIVE_EVENT_SERIES setting.`)) return;
+    const { error } = await SuperadminService.clearCurrentSeriesSuperadminSeriesCurrentDelete({ throwOnError: false });
+    if (error) { toast.error("Failed to unset current series"); return; }
+    toast.success(`${s.name} is no longer current`);
+    await loadSeries();
+  }
+
   // Create form
   let newName = $state("");
   let newSeries = $state("");
@@ -94,6 +117,7 @@
   let editCustomValidator = $state("");
   let editRequireYswsPii = $state(false);
   let editRequireAi = $state(false);
+  let editIsPast = $state(false);
   let editSeries = $state("");
   let editFeatureFlags = $state("");
   let saving = $state(false);
@@ -107,7 +131,8 @@
   async function loadEvents(page = eventsPage.page) {
     const { data, error } = await client.get<Page<EventPrivate>, unknown>({
       url: "/superadmin/events",
-      query: { page, size: 25 },
+      // Large pages keep each series group on one page
+      query: { page, size: 100 },
       throwOnError: false,
     });
     if (error) toast.error("Failed to load events");
@@ -152,6 +177,7 @@
     editCustomValidator = event.custom_validator ?? "";
     editRequireYswsPii = event.require_ysws_pii;
     editRequireAi = event.require_ai_declaration;
+    editIsPast = event.is_past;
     editFeatureFlags = event.feature_flags_csv ?? "";
     editSeries = seriesOf(event.feature_flags_csv);
   }
@@ -168,6 +194,7 @@
     if (newCustom !== (editing.custom_validator ?? null)) body.custom_validator = newCustom;
     if (editRequireYswsPii !== editing.require_ysws_pii) body.require_ysws_pii = editRequireYswsPii;
     if (editRequireAi !== editing.require_ai_declaration) body.require_ai_declaration = editRequireAi;
+    if (editIsPast !== editing.is_past) body.is_past = editIsPast;
     if (editFeatureFlags !== (editing.feature_flags_csv ?? "")) body.feature_flags_csv = editFeatureFlags;
 
     if (Object.keys(body).length > 0) {
@@ -300,7 +327,10 @@
                 <span class="font-mono text-xs opacity-60">{s.slug}</span>
               </span>
               {#if s.is_current}
-                <span class="badge badge-success shrink-0">Current</span>
+                <span class="flex items-center gap-2 shrink-0">
+                  <span class="badge badge-success">Current</span>
+                  <button class="btn btn-ghost btn-xs" onclick={() => clearCurrent(s)}>Unset current</button>
+                </span>
               {:else}
                 <button class="btn btn-outline btn-xs shrink-0" onclick={() => makeCurrent(s)}>Make current</button>
               {/if}
@@ -355,10 +385,24 @@
         <div class="overflow-x-auto">
           <table class="table table-zebra w-full">
             <thead>
-              <tr><th>Name</th><th>Phase</th><th>Repo</th><th>Demo</th><th>Series</th><th>Owner</th><th>Deleted</th><th></th></tr>
+              <tr><th>Name</th><th>Phase</th><th>Repo</th><th>Demo</th><th>Owner</th><th>Deleted</th><th></th></tr>
             </thead>
             <tbody>
-              {#each eventsPage.items as event (event.id)}
+              {#each eventGroups as group (group.slug)}
+                <tr class="bg-base-300">
+                  <th colspan="7" class="text-base">
+                    <span class="flex items-center gap-3">
+                      {group.slug ? seriesName(group.slug) : "No series"}
+                      {#if series.find((s) => s.slug === group.slug)?.is_current}
+                        <span class="badge badge-success badge-sm">Current</span>
+                      {/if}
+                      <span class="text-sm font-normal opacity-60">
+                        {group.events.length} event{group.events.length === 1 ? "" : "s"}
+                      </span>
+                    </span>
+                  </th>
+                </tr>
+              {#each group.events as event (event.id)}
                 <tr class={event.deleted_at ? "opacity-50" : ""}>
                   <td>
                     {#if !event.deleted_at}
@@ -366,17 +410,16 @@
                     {:else}
                       <span class="line-through">{event.name}</span>
                     {/if}
+                    {#if event.is_past}
+                      <span class="badge badge-ghost badge-sm ml-1">Past</span>
+                    {/if}
+                    {#if !group.slug && event.feature_flags_csv}
+                      <span class="block font-mono text-xs opacity-60">{event.feature_flags_csv}</span>
+                    {/if}
                   </td>
                   <td><span class="badge {phaseBadge[event.phase] ?? 'badge-ghost'}">{event.phase}</span></td>
                   <td class="font-mono text-sm">{event.repo_validation}</td>
                   <td class="font-mono text-sm">{event.demo_validation}</td>
-                  <td class="text-sm">
-                    {#if seriesOf(event.feature_flags_csv)}
-                      {seriesName(seriesOf(event.feature_flags_csv))}
-                    {:else}
-                      <span class="font-mono text-xs opacity-60">{event.feature_flags_csv || "—"}</span>
-                    {/if}
-                  </td>
                   <td class="text-sm">{usersPage.items.find((u) => u.id === event.owner_id)?.email ?? event.owner_id}</td>
                   <td>{formatDate(event.deleted_at)}</td>
                   <td class="flex gap-2">
@@ -395,7 +438,7 @@
                 </tr>
                 {#if editing?.id === event.id}
                   <tr>
-                    <td colspan="8">
+                    <td colspan="7">
                       <div class="card bg-base-200 my-2">
                         <div class="card-body gap-3 py-4">
                           <h3 class="font-semibold">Edit: {editing.name}</h3>
@@ -443,6 +486,10 @@
                               <input type="checkbox" class="checkbox checkbox-sm" bind:checked={editRequireAi} />
                               <span class="label-text">Require AI declaration (30% AI code limit)</span>
                             </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                              <input type="checkbox" class="checkbox checkbox-sm" bind:checked={editIsPast} />
+                              <span class="label-text">Past event (moves it to /past-events)</span>
+                            </label>
                           </div>
                           <div class="flex gap-2">
                             <button class="btn btn-primary btn-sm" onclick={saveEdit} disabled={saving}>
@@ -455,6 +502,7 @@
                     </td>
                   </tr>
                 {/if}
+              {/each}
               {/each}
             </tbody>
           </table>
