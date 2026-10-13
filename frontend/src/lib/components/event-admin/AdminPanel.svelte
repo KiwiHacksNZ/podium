@@ -180,17 +180,17 @@
       <StageTimeline
         {event}
         onUpdate={(updated) => {
-          // Reflect the new phase locally so gating UI updates without a reload
+          // Reflect the new phase and rounds locally so gating UI updates without a reload
           event.phase = updated.phase;
+          event.judging_open = updated.judging_open;
+          event.voting_open = updated.voting_open;
         }}
       />
 
-      <!-- Judging / voting round switches -->
+      <!-- Event settings: AI declarations, past event -->
       <RoundSwitches
         {event}
         onUpdate={(updated) => {
-          event.judging_open = updated.judging_open;
-          event.voting_open = updated.voting_open;
           event.is_past = updated.is_past;
           event.require_ai_declaration = updated.require_ai_declaration;
         }}

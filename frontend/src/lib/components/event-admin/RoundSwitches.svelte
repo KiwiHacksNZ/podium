@@ -14,20 +14,14 @@
 
   // Local mirrors so a switch flips immediately even if the parent doesn't
   // reassign the `event` prop.
-  let judgingOpen = $state(untrack(() => event.judging_open));
-  let votingOpen = $state(untrack(() => event.voting_open));
   let isPast = $state(untrack(() => event.is_past));
   let requireAi = $state(untrack(() => event.require_ai_declaration));
   $effect(() => {
-    judgingOpen = event.judging_open;
-    votingOpen = event.voting_open;
     isPast = event.is_past;
     requireAi = event.require_ai_declaration;
   });
 
   const toastLabels = {
-    judging_open: (on: boolean) => `Judging ${on ? "opened" : "closed"}`,
-    voting_open: (on: boolean) => `Attendee voting ${on ? "opened" : "closed"}`,
     is_past: (on: boolean) =>
       on ? "Moved to past events" : "Removed from past events",
     require_ai_declaration: (on: boolean) =>
@@ -37,7 +31,7 @@
   let saving = $state(false);
 
   async function setRound(
-    round: "judging_open" | "voting_open" | "is_past" | "require_ai_declaration",
+    round: "is_past" | "require_ai_declaration",
     toggle: HTMLInputElement,
   ) {
     const open = toggle.checked;
@@ -55,8 +49,6 @@
       // state didn't change so Svelte won't re-render it.
       toggle.checked = !open;
     } else if (data) {
-      judgingOpen = data.judging_open;
-      votingOpen = data.voting_open;
       isPast = data.is_past;
       requireAi = data.require_ai_declaration;
       onUpdate?.(data);
@@ -68,50 +60,9 @@
 
 <div class="card bg-base-200">
   <div class="card-body">
-    <h2 class="card-title">Rounds</h2>
-    <p class="text-sm text-base-content/70">
-      The two rounds open and close independently of the stage above — run them
-      back to back, or at the same time.
-    </p>
+    <h2 class="card-title">Settings</h2>
 
     <div class="flex flex-col gap-3 mt-2">
-      <label class="flex items-start gap-3 cursor-pointer">
-        <input
-          type="checkbox"
-          class="toggle toggle-accent shrink-0"
-          disabled={saving}
-          checked={judgingOpen}
-          onchange={(e) =>
-            setRound("judging_open", e.currentTarget)}
-        />
-        <span>
-          <span class="font-medium">Judge scoring</span>
-          <span class="block text-sm text-base-content/70">
-            Judges can score every project on all four criteria.
-          </span>
-        </span>
-      </label>
-
-      <label class="flex items-start gap-3 cursor-pointer">
-        <input
-          type="checkbox"
-          class="toggle toggle-primary shrink-0"
-          disabled={saving}
-          checked={votingOpen}
-          onchange={(e) => setRound("voting_open", e.currentTarget)}
-        />
-        <span>
-          <span class="font-medium">Attendee voting</span>
-          <span class="block text-sm text-base-content/70">
-            Attendees can rank {event.finalist_count > 0
-              ? `the ${event.finalist_count} finalists`
-              : "projects"} 1st / 2nd / 3rd.
-          </span>
-        </span>
-      </label>
-
-      <div class="divider my-0"></div>
-
       <label class="flex items-start gap-3 cursor-pointer">
         <input
           type="checkbox"
