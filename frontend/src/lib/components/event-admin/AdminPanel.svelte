@@ -18,6 +18,7 @@
   import RoundSwitches from "./RoundSwitches.svelte";
   import JudgesTable from "./JudgesTable.svelte";
   import JudgingPanel from "./JudgingPanel.svelte";
+  import JudgingProgress from "./JudgingProgress.svelte";
   import VotesTable from "./VotesTable.svelte";
   import VoteAuditTable from "./VoteAuditTable.svelte";
   import VoteSuspicionTable from "./VoteSuspicionTable.svelte";
@@ -200,6 +201,9 @@
 
       <!-- Judges for this event + judge code -->
       <JudgesTable {event} />
+
+      <!-- Who has scored how much, so organisers can chase stragglers -->
+      <JudgingProgress {event} />
 
       <!-- Judging Results + finalist lock-in -->
       <JudgingPanel {event} />

@@ -158,6 +158,14 @@ export type JudgeEmail = {
     email: string;
 };
 
+export type JudgeProgress = {
+    id: string;
+    name: string;
+    email: string;
+    scored: number;
+    last_scored_at: (string | null);
+};
+
 /**
  * A project as the judge sees it, with their own score if already given.
  */
@@ -220,6 +228,12 @@ export type JudgeScoreUpsert = {
     usability: number;
 };
 
+export type JudgingProgress = {
+    total_projects: number;
+    judges: Array<JudgeProgress>;
+    projects: Array<ProjectCoverage>;
+};
+
 export type LoginRequested = {
     message: string;
     account_exists: boolean;
@@ -259,6 +273,13 @@ export type PastEvent = {
     demo_validation: string;
     series: string;
     series_name: string;
+};
+
+export type ProjectCoverage = {
+    id: string;
+    name: string;
+    team_name: string;
+    judges_scored: number;
 };
 
 /**
@@ -803,6 +824,16 @@ export type GetEventJudgesEventsAdminEventIdJudgesGetData = {
 export type GetEventJudgesEventsAdminEventIdJudgesGetResponse = (Array<UserAttendee>);
 
 export type GetEventJudgesEventsAdminEventIdJudgesGetError = (HTTPValidationError);
+
+export type GetJudgingProgressEventsAdminEventIdJudgingProgressGetData = {
+    path: {
+        event_id: string;
+    };
+};
+
+export type GetJudgingProgressEventsAdminEventIdJudgingProgressGetResponse = (JudgingProgress);
+
+export type GetJudgingProgressEventsAdminEventIdJudgingProgressGetError = (HTTPValidationError);
 
 export type AddJudgeEventsAdminEventIdAddJudgePostData = {
     body: JudgeEmail;
