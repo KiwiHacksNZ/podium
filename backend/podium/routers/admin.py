@@ -169,12 +169,10 @@ async def update_event_admin(
     for field, value in update.model_dump(exclude_unset=True).items():
         setattr(event, field, value)
 
-    # Moving off the voting phase ends voting, unless this same request says otherwise
-    if (
-        update.phase is not None
-        and update.phase != EventPhase.VOTING
-        and update.voting_open is None
-    ):
+    # Closing an event ends voting for good, so the flag can't linger and leave a
+    # finished event taking ballots. Earlier phases leave it alone: organizers run
+    # the voting round where they like, and may set it up long before voting opens.
+    if update.phase == EventPhase.CLOSED and update.voting_open is None:
         event.voting_open = False
 
     await session.commit()
