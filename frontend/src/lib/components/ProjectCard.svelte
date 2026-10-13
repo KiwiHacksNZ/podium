@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { ProjectPrivate, ProjectPublic } from "$lib/client/types.gen";
-  import { onMount } from "svelte";
-  import { teamLabel } from "$lib/misc";
+  import TeamMembers from "./TeamMembers.svelte";
   import AiDeclaration from "./AiDeclaration.svelte";
   interface Props {
     project: ProjectPrivate | ProjectPublic;
@@ -12,8 +11,6 @@
     /** Call to action shown on selectable cards that aren't picked yet. */
     pickLabel?: string;
   }
-  let credits = $state("");
-  let loadingCredits = $state(true);
   let loadingImage = $state(true);
 
   let {
@@ -24,23 +21,6 @@
     rankLabel = null,
     pickLabel = "Tap to vote",
   }: Props = $props();
-  onMount(() => {
-    const allNames = [
-      project.owner_display_name,
-      ...(project.collaborator_display_names ?? []),
-    ].filter((n): n is string => Boolean(n));
-
-    if (allNames.length > 0) {
-      const formatter = new Intl.ListFormat("en", {
-        style: "short",
-        type: "conjunction",
-      });
-      credits = formatter.format(allNames);
-    } else {
-      credits = "Unknown contributors";
-    }
-    loadingCredits = false;
-  });
 
   // $inspect(project);
 </script>
@@ -89,9 +69,7 @@
       <h2 class="card-title break-words overflow-x-auto">
         {project.name}
       </h2>
-      {#if project.team_name}
-        <p class="text-sm font-semibold opacity-70 -mt-1">{teamLabel(project.team_name)}</p>
-      {/if}
+      <TeamMembers {project} class="-mt-1" />
       <div>
         <AiDeclaration
           declaration={project.ai_declaration}
@@ -101,11 +79,6 @@
       </div>
       <div class="divider my-0"></div>
       <p class="break-words text-sm">{project.description}</p>
-      {#if loadingCredits}
-        <div class="skeleton h-4 w-32"></div>
-      {:else}
-        <p class="break-words text-xs">{credits}</p>
-      {/if}
       <div class="card-actions justify-center mt-2">
         <!-- stopPropagation: opening a link must not also toggle the vote -->
         <a

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PageData } from "./$types";
-  import { teamLabel } from "$lib/misc";
+  import TeamMembers from "$lib/components/TeamMembers.svelte";
   import AiDeclaration from "$lib/components/AiDeclaration.svelte";
 
   let { data }: { data: PageData } = $props();
@@ -42,9 +42,7 @@
                 <span class="badge badge-info shrink-0">#{index + 1}</span>
               {/if}
             </div>
-            {#if project.team_name}
-              <p class="-mt-2 text-sm font-semibold text-base-content/70">{teamLabel(project.team_name)}</p>
-            {/if}
+            <TeamMembers {project} class="-mt-2" />
             <div>
               <AiDeclaration
                 declaration={project.ai_declaration}
@@ -53,9 +51,6 @@
             </div>
             <p class="line-clamp-3 text-sm text-base-content/75">
               {project.description || "No description yet."}
-            </p>
-            <p class="text-xs text-base-content/60">
-              {[project.owner_display_name, ...(project.collaborator_display_names ?? [])].filter(Boolean).join(", ")}
             </p>
             <div class="card-actions mt-1">
               {#if project.repo}

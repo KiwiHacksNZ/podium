@@ -170,6 +170,7 @@ export type JudgeProject = {
     description: string;
     image_url: string;
     owner_display_name: string;
+    member_names: Array<(string)>;
     ai_declaration: string;
     ai_under_limit: (boolean | null);
     my_score?: (JudgeScorePublic | null);
@@ -186,6 +187,7 @@ export type JudgeResult = {
     project_id: string;
     name: string;
     team_name: string;
+    member_names: Array<(string)>;
     ai_under_limit: (boolean | null);
     judge_score: number;
     judge_count: number;

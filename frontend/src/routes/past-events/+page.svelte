@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { EventsService } from "$lib/client/sdk.gen";
   import type { PastEvent, ProjectPublic } from "$lib/client";
+  import TeamMembers from "$lib/components/TeamMembers.svelte";
 
   type PastResult = { event: PastEvent; podium: ProjectPublic[] };
 
@@ -85,15 +86,15 @@
               <p class="text-base-content/60 text-sm">{event.description}</p>
             {/if}
             {#if podium.length > 0}
-              <ol class="space-y-1">
+              <ol class="space-y-3">
                 {#each podium as project, i (project.id)}
-                  <li class="flex items-center gap-2">
-                    <span class="badge badge-sm w-10 shrink-0 {i === 0 ? 'badge-warning' : 'badge-ghost'}">{places[i]}</span>
-                    <span class="font-medium">{project.name}</span>
-                    {#if project.team_name}
-                      <span class="text-sm text-base-content/60">· {project.team_name}</span>
-                    {/if}
-                    <span class="text-sm text-base-content/60">{project.points} pts</span>
+                  <li class="flex items-start gap-3">
+                    <span class="badge badge-sm mt-0.5 w-10 shrink-0 {i === 0 ? 'badge-warning' : 'badge-ghost'}">{places[i]}</span>
+                    <div class="min-w-0 grow">
+                      <p class="font-medium">{project.name}</p>
+                      <TeamMembers {project} />
+                    </div>
+                    <span class="shrink-0 text-sm text-base-content/60">{project.points} pts</span>
                   </li>
                 {/each}
               </ol>

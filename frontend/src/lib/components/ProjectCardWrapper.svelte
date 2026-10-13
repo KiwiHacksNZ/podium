@@ -3,7 +3,8 @@
   import Modal from "./Modal.svelte";
   import type { EventPrivate, EventPublic, ProjectPrivate } from "$lib/client/types.gen";
   import { validateProject } from "$lib/validation";
-  import { customInvalidateAll, teamLabel } from "$lib/misc";
+  import { customInvalidateAll } from "$lib/misc";
+  import TeamMembers from "./TeamMembers.svelte";
   import { toast } from "svelte-sonner";
   import { client } from "$lib/client/sdk.gen";
   import { getAuthenticatedUser } from "$lib/user.svelte";
@@ -27,20 +28,6 @@
   const eventName = $derived(project.event_name || eventForProject?.name || "");
   const eventSlug = $derived(project.event_slug || eventForProject?.slug || "");
 
-  const credits = $derived.by(() => {
-    const allNames = [
-      project.owner_display_name,
-      ...(project.collaborator_display_names ?? []),
-    ].filter((name): name is string => Boolean(name));
-
-    if (allNames.length === 0) return "Unknown contributors";
-
-    const formatter = new Intl.ListFormat("en", {
-      style: "short",
-      type: "conjunction",
-    });
-    return formatter.format(allNames);
-  });
 
   const collaboratorEntries = $derived.by(() => {
     const ids = project.collaborator_ids ?? [];
@@ -184,15 +171,12 @@
         </a>
       {/if}
       <h2 class="card-title break-words text-xl leading-tight">{project.name}</h2>
-      {#if project.team_name}
-        <p class="text-sm font-semibold text-base-content/70">{teamLabel(project.team_name)}</p>
-      {/if}
+      <TeamMembers {project} class="mt-0.5" />
     </div>
 
     <p class="line-clamp-2 text-sm text-base-content/75">
       {project.description || "No description yet."}
     </p>
-    <p class="text-xs text-base-content/60">{credits}</p>
 
     <div class="flex flex-wrap items-center gap-2 rounded-box bg-base-200 px-3 py-2 text-sm">
       <span class="text-base-content/60">Join code</span>
