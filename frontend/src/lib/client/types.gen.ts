@@ -39,6 +39,7 @@ export type EventCreate = {
     demo_validation?: string;
     custom_validator?: (string | null);
     feature_flags_csv?: string;
+    slug?: (string | null);
 };
 
 /**
@@ -370,6 +371,7 @@ export type SuperadminEventUpdate = {
     custom_validator?: (string | null);
     feature_flags_csv?: (string | null);
     owner_email?: (string | null);
+    slug?: (string | null);
 };
 
 /**

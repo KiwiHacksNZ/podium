@@ -9,7 +9,10 @@ Usage:
     from podium.db.postgres.queries import get_active_event, list_active_events
 """
 
+from secrets import token_urlsafe
 from uuid import UUID
+
+from slugify import slugify
 
 from sqlalchemy.orm import Load
 from sqlmodel import select
@@ -64,3 +67,31 @@ async def get_current_series_slug(session: AsyncSession) -> str:
 async def series_names(session: AsyncSession) -> dict[str, str]:
     """Map of series slug -> display name."""
     return {s.slug: s.name for s in await scalar_all(session, select(EventSeries))}
+
+
+async def resolve_event_slug(
+    session: AsyncSession,
+    requested: str | None,
+    name: str,
+    exclude_event_id: UUID | None = None,
+) -> str:
+    """The slug an event should use: a cleaned-up custom one if given, else
+    one generated from the name with a random suffix.
+
+    Raises ValueError with a user-facing message if the custom slug is empty
+    after cleaning or already taken (soft-deleted events keep their slug)."""
+    if requested is None or not requested.strip():
+        base = slugify(name)[:40] or "event"
+        return f"{base}-{token_urlsafe(4)}"
+
+    slug = slugify(requested)[:50]
+    if not slug:
+        raise ValueError("Use letters, numbers or dashes for the URL")
+    stmt = select(Event).where(Event.slug == slug)
+    if exclude_event_id is not None:
+        stmt = stmt.where(Event.id != exclude_event_id)
+    taken = await scalar_one_or_none(session, stmt)
+    if taken:
+        detail = " (by a deleted event)" if taken.deleted_at else ""
+        raise ValueError(f"/events/{slug} is already used{detail}")
+    return slug
