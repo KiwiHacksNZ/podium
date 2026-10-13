@@ -2,6 +2,7 @@
   import type { ProjectPrivate, ProjectPublic } from "$lib/client/types.gen";
   import TeamMembers from "./TeamMembers.svelte";
   import AiDeclaration from "./AiDeclaration.svelte";
+  import ProjectImage from "./ProjectImage.svelte";
   interface Props {
     project: ProjectPrivate | ProjectPublic;
     isSelected: boolean;
@@ -12,6 +13,7 @@
     pickLabel?: string;
   }
   let loadingImage = $state(true);
+  let imageFailed = $state(false);
 
   let {
     project,
@@ -47,17 +49,24 @@
         : ''}"
   >
     <figure class="w-full relative bg-base-200">
-      <img
-        src={project.image_url}
-        alt="Project"
-        class="aspect-[3/2] w-full object-cover"
-        loading="lazy"
-        onload={() => (loadingImage = false)}
-        onerror={() => (loadingImage = false)}
-        style="opacity: {loadingImage ? 0 : 1}; transition: opacity 0.2s;"
-      />
-      {#if loadingImage}
-        <div class="skeleton absolute inset-0"></div>
+      {#if project.image_url && !imageFailed}
+        <img
+          src={project.image_url}
+          alt="Project"
+          class="aspect-[3/2] w-full object-cover"
+          loading="lazy"
+          onload={() => (loadingImage = false)}
+          onerror={() => {
+            loadingImage = false;
+            imageFailed = true;
+          }}
+          style="opacity: {loadingImage ? 0 : 1}; transition: opacity 0.2s;"
+        />
+        {#if loadingImage}
+          <div class="skeleton absolute inset-0"></div>
+        {/if}
+      {:else}
+        <ProjectImage {project} class="aspect-[3/2] w-full" />
       {/if}
       {#if rankLabel}
         <div class="badge badge-info badge-lg absolute top-2 left-2 z-10">

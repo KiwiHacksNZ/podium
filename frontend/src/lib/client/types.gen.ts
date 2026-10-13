@@ -314,6 +314,7 @@ export type ProjectPrivate = {
     ai_declaration?: string;
     ai_under_limit?: (boolean | null);
     is_finalist?: boolean;
+    judges_pick?: boolean;
     owner_id: string;
     owner_display_name?: string;
     collaborator_display_names?: Array<(string)>;
@@ -343,6 +344,7 @@ export type ProjectPublic = {
     ai_declaration?: string;
     ai_under_limit?: (boolean | null);
     is_finalist?: boolean;
+    judges_pick?: boolean;
     owner_id: string;
     owner_display_name?: string;
     collaborator_display_names?: Array<(string)>;

@@ -194,3 +194,64 @@ export function memberNames(project: {
   ).filter((n): n is string => Boolean(n && n.trim()));
   return new Intl.ListFormat("en-NZ", { style: "long", type: "conjunction" }).format(names);
 }
+
+type Ranked = { points: number; rank_counts?: number[] };
+
+const CHOICE_ORDINALS = ["1st", "2nd", "3rd"];
+
+function sameKey(a: Ranked, b: Ranked): boolean {
+  if (a.points !== b.points) return false;
+  const ac = a.rank_counts ?? [];
+  const bc = b.rank_counts ?? [];
+  return CHOICE_ORDINALS.every((_, i) => (ac[i] ?? 0) === (bc[i] ?? 0));
+}
+
+/**
+ * Places for a leaderboard already sorted best first (points, then most 1st
+ * choices, then 2nd, then 3rd — the backend's order). Projects level on every
+ * count share a place ("=4"); a project that only edges the next one on the
+ * tiebreak says so, rather than looking like it won outright.
+ */
+export function leaderboardPlaces(
+  projects: Ranked[],
+): { place: number; tied: boolean; tiebreak: string | null }[] {
+  return projects.map((p, i) => {
+    let first = i;
+    while (first > 0 && sameKey(projects[first - 1], p)) first--;
+    const prev = projects[i - 1];
+    const next = projects[i + 1];
+    const tied = (prev && sameKey(prev, p)) || (next && sameKey(next, p)) || false;
+    let tiebreak: string | null = null;
+    if (next && next.points === p.points && !sameKey(next, p)) {
+      const pc = p.rank_counts ?? [];
+      const nc = next.rank_counts ?? [];
+      const at = CHOICE_ORDINALS.findIndex((_, k) => (pc[k] ?? 0) !== (nc[k] ?? 0));
+      if (at !== -1) tiebreak = `Ahead on ${CHOICE_ORDINALS[at]} choices`;
+    }
+    return { place: first + 1, tied, tiebreak };
+  });
+}
+
+/** "1st", "2nd", "3rd", "4th", "11th", "22nd" */
+export function placeLabel(place: number): string {
+  const tens = place % 100;
+  if (tens >= 11 && tens <= 13) return `${place}th`;
+  return `${place}${["th", "st", "nd", "rd"][place % 10] ?? "th"}`;
+}
+
+/** Up to two initials for a placeholder tile: "Rover Nova" -> "RN". */
+export function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const letters = words.length > 1 ? [words[0], words[1]] : [words[0] ?? ""];
+  return letters
+    .map((w) => Array.from(w.replace(/[^\p{L}\p{N}]/gu, ""))[0] ?? "")
+    .join("")
+    .toUpperCase();
+}
+
+/** A stable hue per project, so its placeholder looks the same everywhere. */
+export function hueFor(seed: string): number {
+  let h = 0;
+  for (const ch of seed) h = (h * 31 + ch.codePointAt(0)!) % 360;
+  return h;
+}
