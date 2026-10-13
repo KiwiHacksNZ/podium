@@ -286,6 +286,11 @@
   background: rgba(145, 226, 255, 0.82);
 }
 
+[data-theme="kiwihacks"] .badge-error {
+  background: rgba(176, 71, 71, 0.82);
+  color: #fff2f2;
+}
+
 [data-theme="kiwihacks"] h1,
 [data-theme="kiwihacks"] h2,
 [data-theme="kiwihacks"] h3,

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import AiDeclarationFields from "./AiDeclarationFields.svelte";
   import { untrack } from "svelte";
   import { EventsService, ProjectsService } from "$lib/client/sdk.gen";
   import type { ProjectCreate, EventPublic } from "$lib/client";
@@ -22,6 +23,9 @@
 
   let project: ProjectCreate = $state({
     name: "",
+    team_name: "",
+    ai_declaration: "",
+    ai_under_limit: null,
     repo: "",
     demo: "",
     image_url: "",
@@ -90,6 +94,9 @@
     toast.success("Project created successfully");
     project = {
       name: "",
+      team_name: "",
+    ai_declaration: "",
+    ai_under_limit: null,
       repo: "",
       demo: "",
       image_url: "",
@@ -150,6 +157,16 @@
       type="text"
       bind:value={project.name}
       placeholder="A really cool project!"
+      class="input input-bordered w-full"
+    />
+
+    <label class="label" for="team_name">Team Name</label>
+    <input
+      id="team_name"
+      type="text"
+      maxlength="100"
+      bind:value={project.team_name}
+      placeholder="Optional — judges use this to find you"
       class="input input-bordered w-full"
     />
 
@@ -245,6 +262,13 @@
     />
     {#if repoWarning}
       <div class="text-sm text-warning mt-1">{repoWarning}</div>
+    {/if}
+
+    {#if selectedEvent?.require_ai_declaration}
+      <AiDeclarationFields
+        bind:declaration={project.ai_declaration}
+        bind:underLimit={project.ai_under_limit}
+      />
     {/if}
 
     <label class="label" for="hours_spent">Rough estimate of hours spent</label>

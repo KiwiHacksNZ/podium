@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { PageData } from "./$types";
+  import { teamLabel } from "$lib/misc";
+  import AiDeclaration from "$lib/components/AiDeclaration.svelte";
 
   let { data }: { data: PageData } = $props();
   let projects = $derived(data.projects);
@@ -39,6 +41,15 @@
               {#if project.points > 0}
                 <span class="badge badge-info shrink-0">#{index + 1}</span>
               {/if}
+            </div>
+            {#if project.team_name}
+              <p class="-mt-2 text-sm font-semibold text-base-content/70">{teamLabel(project.team_name)}</p>
+            {/if}
+            <div>
+              <AiDeclaration
+                declaration={project.ai_declaration}
+                underLimit={project.ai_under_limit}
+              />
             </div>
             <p class="line-clamp-3 text-sm text-base-content/75">
               {project.description || "No description yet."}

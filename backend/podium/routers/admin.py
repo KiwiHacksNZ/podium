@@ -494,7 +494,7 @@ async def get_event_leaderboard(
             selectinload(Project.collaborators),
         ),
     )
-    projects.sort(key=lambda p: p.points, reverse=True)
+    projects.sort(key=lambda p: p.leaderboard_key, reverse=True)
     return [ProjectPrivate.model_validate(p) for p in projects]
 
 

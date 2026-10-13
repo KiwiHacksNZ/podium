@@ -7,6 +7,7 @@ Superadmins can:
   - Soft-delete events (sets deleted_at, hides from public listings)
   - Update any event field including owner (by email)
   - List all users
+  - Create event series and choose the current one
 
 Regular admin endpoints (admin.py) already grant superadmins full owner access
 to any event via the get_owned_event helper.
@@ -35,7 +36,11 @@ from podium.db.postgres import (
     Project,
     EventPrivate,
     EventUpdate,
+    EventSeries,
+    EventSeriesCreate,
+    EventSeriesPublic,
     get_session,
+    scalar_all,
     scalar_one_or_none,
 )
 from podium.routers.auth import get_current_user
@@ -176,6 +181,56 @@ async def update_event(
     stmt = select(Event).where(Event.id == event.id).options(selectinload(Event.projects))
     event = await scalar_one_or_none(session, stmt)
     return EventPrivate.model_validate(event)
+
+
+@router.get("/series")
+async def list_series(
+    user: Annotated[User, Depends(require_superadmin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[EventSeriesPublic]:
+    """List every event series, current one first."""
+    series = await scalar_all(session, select(EventSeries))
+    series.sort(key=lambda s: (not s.is_current, s.name.lower()))
+    return [EventSeriesPublic.model_validate(s) for s in series]
+
+
+@router.post("/series")
+async def create_series(
+    body: EventSeriesCreate,
+    user: Annotated[User, Depends(require_superadmin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> EventSeriesPublic:
+    """Create a series. Events join it by carrying its slug in feature_flags_csv."""
+    slug = slugify(body.slug or body.name)[:50]
+    if not slug:
+        raise HTTPException(status_code=400, detail="Series needs a name")
+    if await scalar_one_or_none(session, select(EventSeries).where(EventSeries.slug == slug)):
+        raise HTTPException(status_code=400, detail=f"A series called '{slug}' already exists")
+    series = EventSeries(slug=slug, name=body.name.strip())
+    session.add(series)
+    await session.commit()
+    await session.refresh(series)
+    return EventSeriesPublic.model_validate(series)
+
+
+@router.post("/series/{series_id}/current")
+async def make_series_current(
+    series_id: Annotated[UUID, Path(title="Series ID")],
+    user: Annotated[User, Depends(require_superadmin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> EventSeriesPublic:
+    """Make this the current series: its events become the official event list."""
+    target = await session.get(EventSeries, series_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="Series not found")
+    # Clear first: a unique index allows only one current series at a time
+    for s in await scalar_all(session, select(EventSeries).where(EventSeries.is_current)):
+        s.is_current = False
+    await session.flush()
+    target.is_current = True
+    await session.commit()
+    await session.refresh(target)
+    return EventSeriesPublic.model_validate(target)
 
 
 @router.get("/users")

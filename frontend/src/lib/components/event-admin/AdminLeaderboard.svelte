@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ProjectPrivate, EventPrivate } from "$lib/client/types.gen";
   import ProjectCard from "$lib/components/ProjectCard.svelte";
+  import { voteBreakdown } from "$lib/misc";
 
   interface Props {
     projects: ProjectPrivate[];
@@ -33,7 +34,8 @@
               <div
                 class="bg-base-100/90 backdrop-blur-sm rounded-lg p-2 text-xs"
               >
-                <div class="font-medium">Votes: {project.points || 0}</div>
+                <div class="font-medium">{project.points || 0} pts</div>
+                <div class="opacity-70">{voteBreakdown(project.rank_counts)}</div>
                 <div class="mt-1">
                   <span class="badge badge-xs {validationBadge(project.validation_status).cls}">
                     {validationBadge(project.validation_status).label}

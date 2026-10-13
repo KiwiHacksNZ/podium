@@ -11,9 +11,10 @@
   const { data } = $props();
   let selectedProjects: string[] = $state([]);
 
+  // A ballot is exactly 3 picks (MAX_RANK on the backend)
   const ordinals = ["1st", "2nd", "3rd"];
   function ordinal(index: number) {
-    return ordinals[index] ?? `${index + 1}th`;
+    return ordinals[index];
   }
 
   // Theme tokens so the ballot re-skins with the rest of the app: the top pick
@@ -24,11 +25,11 @@
     "bg-primary text-primary-content",
   ];
   function rankStyle(index: number) {
-    return rankStyles[index] ?? "bg-base-300 text-base-content";
+    return rankStyles[index];
   }
   // Ballot order is the rank: 1st choice is worth 3 points, 2nd 2, 3rd 1.
   function points(index: number) {
-    return Math.max(1, 3 - index);
+    return 3 - index;
   }
 
   function rankLabelFor(projectId: string): string | null {
@@ -160,7 +161,12 @@
               >
                 {ordinal(index)}
               </span>
-              <span class="font-bold break-words grow">{project.name}</span>
+              <span class="font-bold break-words grow">
+                {project.name}
+                {#if project.team_name}
+                  <span class="font-normal opacity-80">· {project.team_name}</span>
+                {/if}
+              </span>
               <span class="text-sm font-semibold whitespace-nowrap">
                 {points(index)}
                 {points(index) === 1 ? "pt" : "pts"}

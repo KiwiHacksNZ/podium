@@ -31,12 +31,18 @@ class Project(SQLModel, table=True):
 
     # Core fields
     name: str = Field(max_length=255)
+    team_name: str = Field(default="", max_length=100)
     repo: str = Field(default="")  # TEXT - URLs can be long
     image_url: str = Field(default="")  # TEXT - URLs with tokens can be very long
     demo: str = Field(default="")  # TEXT - URLs can be long
     description: str = Field(default="")
     join_code: str = Field(max_length=20, unique=True)
     hours_spent: int = Field(default=0)
+
+    # AI declaration — required when the event sets require_ai_declaration.
+    # ai_under_limit: did AI write less than AI_CODE_LIMIT_PERCENT of the code?
+    ai_declaration: str = Field(default="", max_length=1000)
+    ai_under_limit: bool | None = Field(default=None)
 
     # Background validation result — updated asynchronously after project save
     validation_status: str = Field(default=ValidationStatus.PENDING, max_length=20)
@@ -53,6 +59,22 @@ class Project(SQLModel, table=True):
     def points(self) -> int:
         """Weighted ballot score — 3 for a 1st choice, 2 for a 2nd, 1 for a 3rd."""
         return sum(RANK_POINTS.get(v.rank, 0) for v in (self.votes or []))
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def rank_counts(self) -> list[int]:
+        """How many ballots placed this project 1st, 2nd, 3rd — explains `points`,
+        since a project with fewer but higher-ranked votes can outscore one with more."""
+        counts = [0] * len(RANK_POINTS)
+        for v in self.votes or []:
+            if v.rank in RANK_POINTS:
+                counts[v.rank - 1] += 1
+        return counts
+
+    @property
+    def leaderboard_key(self) -> tuple[int, ...]:
+        """Sort key: points, then most 1st choices, then most 2nd choices, ..."""
+        return (self.points, *self.rank_counts)
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -114,11 +136,15 @@ class ProjectPublic(SQLModel):
 
     id: UUID
     name: str
+    team_name: str = ""
     repo: str
     image_url: str
     demo: str
     description: str
     points: int
+    rank_counts: list[int] = []
+    ai_declaration: str = ""
+    ai_under_limit: bool | None = None
     is_finalist: bool = False
     owner_id: UUID
     owner_display_name: str = ""
@@ -140,11 +166,14 @@ class ProjectCreate(SQLModel):
     """Request body for creating a project."""
 
     name: str
+    team_name: str = Field(default="", max_length=100)
     repo: str
     image_url: str
     demo: str = ""
     description: str = ""
     hours_spent: int = 0
+    ai_declaration: str = Field(default="", max_length=1000)
+    ai_under_limit: bool | None = None
     event_id: UUID
 
 
@@ -152,8 +181,11 @@ class ProjectUpdate(SQLModel):
     """Request body for updating a project. All fields optional."""
 
     name: str | None = None
+    team_name: str | None = Field(default=None, max_length=100)
     repo: str | None = None
     image_url: str | None = None
     demo: str | None = None
     description: str | None = None
     hours_spent: int | None = None
+    ai_declaration: str | None = Field(default=None, max_length=1000)
+    ai_under_limit: bool | None = None

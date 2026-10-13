@@ -25,7 +25,8 @@ export const load: PageLoad = async ({ params, fetch, parent }) => {
       console.error(projectsError, projectsResponse);
       throw error(projectsResponse.status, JSON.stringify(projectsError));
     }
-    let toSelect = (event as any).max_votes_per_user ?? 0;
+    // Never offer more than 3 picks, whatever the event reports
+    let toSelect = Math.min((event as any).max_votes_per_user ?? 0, 3);
 
     // Filter out projects the user already voted for or owns/collaborates on
     const user = getAuthenticatedUser().user;

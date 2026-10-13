@@ -28,6 +28,7 @@ from podium.db.postgres.project import (
     ProjectUpdate,
 )
 from podium.db.postgres.vote import Vote
+from podium.db.postgres.series import EventSeries, EventSeriesPublic, EventSeriesCreate
 from podium.db.postgres.judge_score import (
     JudgeScore,
     JudgeScorePublic,
@@ -71,6 +72,10 @@ __all__ = [
     "ProjectPrivate",
     "ProjectCreate",
     "ProjectUpdate",
+    # Series
+    "EventSeries",
+    "EventSeriesPublic",
+    "EventSeriesCreate",
     # Vote & Referral
     "Vote",
     "VoteAuditLog",

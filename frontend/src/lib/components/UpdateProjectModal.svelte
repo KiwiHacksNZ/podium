@@ -1,4 +1,5 @@
 <script lang="ts">
+  import AiDeclarationFields from "./AiDeclarationFields.svelte";
   import { EventsService, ProjectsService } from "$lib/client/sdk.gen";
   import type { EventPublic, ProjectPublic } from "$lib/client";
   import { toast } from "svelte-sonner";
@@ -52,6 +53,7 @@
 
   const emptyProjectUpdate: ProjectUpdate = {
     name: "",
+    team_name: "",
     repo: "",
     image_url: "",
     demo: "",
@@ -61,6 +63,7 @@
   const emptyProject: ProjectPublic = {
     id: "",
     name: "",
+    team_name: "",
     repo: "",
     image_url: "",
     demo: "",
@@ -165,6 +168,16 @@
           class="input input-bordered w-full"
         />
 
+        <label class="label" for="team_name">Team Name</label>
+        <input
+          id="team_name"
+          type="text"
+          maxlength="100"
+          bind:value={preselectedProject.team_name}
+          placeholder="Optional — judges use this to find you"
+          class="input input-bordered w-full"
+        />
+
         <label class="label" for="event">Event</label>
         <select
           id="event"
@@ -240,6 +253,13 @@
           placeholder="Repository URL"
           class="input input-bordered w-full"
         />
+
+        {#if selectedEvent?.require_ai_declaration}
+          <AiDeclarationFields
+            bind:declaration={preselectedProject.ai_declaration}
+            bind:underLimit={preselectedProject.ai_under_limit}
+          />
+        {/if}
 
         <label class="label" for="hours_spent">Hours Spent</label>
         <input

@@ -295,6 +295,10 @@
   background: rgba(255, 122, 179, 0.8);
 }
 
+[data-theme="nova"] .badge-error {
+  background: rgba(255, 51, 102, 0.85);
+}
+
 [data-theme="nova"] h1,
 [data-theme="nova"] h2,
 [data-theme="nova"] h3,

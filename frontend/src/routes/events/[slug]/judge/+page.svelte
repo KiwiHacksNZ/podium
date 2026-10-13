@@ -5,7 +5,8 @@
   import { toast } from "svelte-sonner";
   import { client } from "$lib/client/sdk.gen";
   import StarRating from "$lib/components/StarRating.svelte";
-  import { handleError, withHttpsIfMissing } from "$lib/misc";
+  import AiDeclaration from "$lib/components/AiDeclaration.svelte";
+  import { handleError, teamLabel, withHttpsIfMissing } from "$lib/misc";
   import { asyncClick } from "$lib/actions/asyncClick";
   import { getAuthenticatedUser } from "$lib/user.svelte";
 
@@ -77,6 +78,16 @@
     Object.fromEntries(projects.map((p) => [p.id, toDraft(p.my_score)])),
   );
   let index = $state(0);
+
+  // Judges are usually told a team name, not a project name
+  let search = $state("");
+  function label(p: JudgeProject): string {
+    return p.team_name ? `${p.team_name} · ${p.name}` : p.name;
+  }
+  function matches(p: JudgeProject): boolean {
+    const q = search.trim().toLowerCase();
+    return !q || label(p).toLowerCase().includes(q);
+  }
 
   const project = $derived(projects[index]);
   const draft = $derived(project ? drafts[project.id] : undefined);
@@ -164,6 +175,15 @@
     // Judging closed or access revoked: nothing more will arrive.
     if (response?.status === 403) return;
     if (!fresh) return;
+    // Teams can rename themselves mid-event; keep labels current
+    const byId = new Map(fresh.projects.map((p) => [p.id, p]));
+    for (const p of projects) {
+      const latest = byId.get(p.id);
+      if (latest) {
+        p.name = latest.name;
+        p.team_name = latest.team_name;
+      }
+    }
     const known = new Set(projects.map((p) => p.id));
     const added = fresh.projects.filter((p) => !known.has(p.id));
     if (added.length === 0) return;
@@ -245,15 +265,21 @@
       <p class="mt-1 text-sm opacity-70">
         Tap a project to edit it. Changes save automatically.
       </p>
+      <input
+        type="search"
+        class="input input-bordered w-full mt-4"
+        placeholder="Search by team or project name"
+        bind:value={search}
+      />
       <ul class="mt-4 flex flex-col gap-2">
-        {#each projects as p (p.id)}
+        {#each projects.filter(matches) as p (p.id)}
           <li>
             <button
               type="button"
               class="btn btn-block justify-between h-auto py-3 normal-case"
               onclick={() => edit(p.id)}
             >
-              <span class="font-bold text-left break-words">{p.name}</span>
+              <span class="font-bold text-left break-words">{label(p)}</span>
               <span class="flex items-center gap-3 whitespace-nowrap">
                 {#if stored[p.id]}
                   <span class="opacity-70"
@@ -276,6 +302,9 @@
       </p>
       <h1 class="text-3xl sm:text-4xl font-extrabold">Your grades</h1>
       <h2 class="text-xl sm:text-2xl font-bold break-words">{project.name}</h2>
+      {#if project.team_name}
+        <p class="font-semibold">{teamLabel(project.team_name)}</p>
+      {/if}
       {#if project.owner_display_name}
         <p class="text-sm opacity-70">by {project.owner_display_name}</p>
       {/if}
@@ -285,16 +314,24 @@
          so pick by name rather than stepping through. -->
     <label class="form-control">
       <span class="label-text font-semibold">Jump to a project</span>
+      <input
+        type="search"
+        class="input input-bordered w-full mt-1"
+        placeholder="Search by team or project name"
+        bind:value={search}
+      />
       <select
         class="select select-bordered w-full mt-1"
         value={index}
         onchange={pick}
       >
         {#each projects as p, i}
-          <option value={i}>
-            {isScored(p.id) ? "✓" : "○"}
-            {p.name}
-          </option>
+          {#if i === index || matches(p)}
+            <option value={i}>
+              {isScored(p.id) ? "✓" : "○"}
+              {label(p)}
+            </option>
+          {/if}
         {/each}
       </select>
     </label>
@@ -313,6 +350,10 @@
         {#if project.description}
           <p class="break-words text-sm">{project.description}</p>
         {/if}
+        <AiDeclaration
+          declaration={project.ai_declaration}
+          underLimit={project.ai_under_limit}
+        />
         <div class="flex flex-wrap gap-2">
           {#if project.repo}
             <a

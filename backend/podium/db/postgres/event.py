@@ -64,6 +64,14 @@ class Event(SQLModel, table=True):
     # PII policy — require attendees to have YSWS PII (address + DOB) before submitting
     require_ysws_pii: bool = Field(default=False)
 
+    # AI policy — require projects to declare how AI was used and whether AI
+    # wrote less than AI_CODE_LIMIT_PERCENT of the code
+    require_ai_declaration: bool = Field(default=False)
+
+    # Set by the organizer once the event is over: moves it off the main event
+    # lists and onto the public past-events archive.
+    is_past: bool = Field(default=False)
+
     # Soft-delete — NULL means active; set to a timestamp to hide the event.
     deleted_at: datetime | None = Field(default=None)
 
@@ -144,8 +152,10 @@ class EventPublic(SQLModel):
     phase: str
     demo_links_optional: bool
     require_ysws_pii: bool
+    require_ai_declaration: bool
     judging_open: bool
     voting_open: bool
+    is_past: bool
     max_votes_per_user: int
     finalist_count: int
     # Expose validation config so the frontend can drive instant warnings
@@ -171,8 +181,10 @@ class EventUpdate(SQLModel):
     phase: str | None = None
     judging_open: bool | None = None
     voting_open: bool | None = None
+    is_past: bool | None = None
     demo_links_optional: bool | None = None
     require_ysws_pii: bool | None = None
+    require_ai_declaration: bool | None = None
     repo_validation: str | None = None
     demo_validation: str | None = None
     custom_validator: str | None = None

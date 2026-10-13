@@ -27,13 +27,23 @@ from podium.db.postgres import (
 )
 from podium.constants import BAD_AUTH, BAD_ACCESS, MAX_RANK, Slug, EventPhase
 from podium.cache import cache_get, cache_set, cache_delete
-from podium.db.postgres.queries import get_active_event, list_active_events
+from podium.db.postgres.queries import (
+    get_active_event,
+    get_current_series_slug,
+    list_active_events,
+    series_names,
+)
 
 router = APIRouter(prefix="/events", tags=["events"])
 
 
 class UserEvents(BaseModel):
     attending_events: list[EventPublic]
+
+
+class PastEvent(EventPublic):
+    series: str
+    series_name: str
 
 
 class CreateVotes(BaseModel):
@@ -57,7 +67,7 @@ async def list_official_events(
     session: Annotated[AsyncSession, Depends(get_ro_session)],
 ) -> list[EventPublic]:
     """List all official events for the current series (flagship + satellites)."""
-    active_series = settings.active_event_series
+    active_series = await get_current_series_slug(session)
     if not active_series:
         return []
 
@@ -66,10 +76,40 @@ async def list_official_events(
     official_events = [
         EventPublic.model_validate(e)
         for e in all_events
-        if active_series in e.feature_flags_list and e.phase != EventPhase.HIDDEN
+        if active_series in e.feature_flags_list
+        and e.phase != EventPhase.HIDDEN
+        and not e.is_past
     ]
 
     return official_events
+
+
+@router.get("/past")
+async def list_past_events(
+    session: Annotated[AsyncSession, Depends(get_ro_session)],
+) -> list[PastEvent]:
+    """List events their organizers have marked as past, sorted by series."""
+    all_events = await list_active_events(session, selectinload(Event.projects))
+    names = await series_names(session)
+
+    def series_of(e: Event) -> str:
+        # Prefer a flag that names a known series; else the first flag
+        flags = e.feature_flags_list
+        return next((f for f in flags if f in names), flags[0] if flags else "")
+
+    past = []
+    for e in all_events:
+        if not e.is_past or e.phase == EventPhase.HIDDEN:
+            continue
+        series = series_of(e)
+        past.append(
+            PastEvent(
+                **EventPublic.model_validate(e).model_dump(),
+                series=series,
+                series_name=names.get(series, series),
+            )
+        )
+    return sorted(past, key=lambda e: (e.series == "", e.series_name.lower(), e.name))
 
 
 @router.get("/{event_id}")
@@ -112,7 +152,7 @@ async def attend_event(
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     """Attend an official event by ID."""
-    active_series = settings.active_event_series
+    active_series = await get_current_series_slug(session)
     if not active_series:
         raise HTTPException(status_code=400, detail="No active event series configured")
 
@@ -258,9 +298,13 @@ async def get_event_projects(
     event_id: Annotated[UUID, Path(title="Event ID")],
     leaderboard: Annotated[bool, Query(description="Sort by points if true")],
     session: Annotated[AsyncSession, Depends(get_ro_session)],
+    all_projects: Annotated[
+        bool, Query(description="Include non-finalists while voting is open")
+    ] = False,
 ) -> list[ProjectPublic]:
     """Get projects for an event. During voting, only finalists are returned once an
-    organizer has locked them in. Leaderboard results are cached for 30s."""
+    organizer has locked them in, unless all_projects is set (e.g. the showcase).
+    Leaderboard results are cached for 30s."""
     event = await session.get(Event, event_id)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -273,10 +317,13 @@ async def get_event_projects(
             )
 
         # Serve from cache if available (30s TTL is fine for leaderboards)
+        # Only the default (finalists-during-voting) view is cached, so the
+        # existing leaderboard:{id} invalidations stay correct
         cache_key = f"leaderboard:{event_id}"
-        cached = await cache_get(cache_key)
-        if cached is not None:
-            return cached
+        if not all_projects:
+            cached = await cache_get(cache_key)
+            if cached is not None:
+                return cached
 
     projects = await scalar_all(
         session,
@@ -289,13 +336,14 @@ async def get_event_projects(
         ),
     )
 
-    if event.voting_open and any(p.is_finalist for p in projects):
+    if not all_projects and event.voting_open and any(p.is_finalist for p in projects):
         projects = [p for p in projects if p.is_finalist]
 
     if leaderboard:
-        projects.sort(key=lambda p: p.points, reverse=True)
+        projects.sort(key=lambda p: p.leaderboard_key, reverse=True)
         result = [ProjectPublic.model_validate(p).model_dump() for p in projects]
-        await cache_set(cache_key, result, ttl=30)
+        if not all_projects:
+            await cache_set(cache_key, result, ttl=30)
         return result  # type: ignore[return-value]
     else:
         random.shuffle(projects)
@@ -337,7 +385,7 @@ async def create_test_event(
     if not getattr(settings, "enable_test_endpoints", False):
         raise HTTPException(status_code=404, detail="Not found")
 
-    active_series = settings.active_event_series
+    active_series = await get_current_series_slug(session)
     if not active_series:
         raise HTTPException(status_code=400, detail="No active event series configured")
 

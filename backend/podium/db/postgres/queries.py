@@ -16,7 +16,9 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from podium.db.postgres.base import scalar_one_or_none, scalar_all
+from podium.config import settings
 from podium.db.postgres.event import Event
+from podium.db.postgres.series import EventSeries
 
 
 async def get_active_event(
@@ -46,3 +48,19 @@ async def list_active_events(
         .options(*extra_loads)
     )
     return await scalar_all(session, stmt)
+
+
+async def get_current_series_slug(session: AsyncSession) -> str:
+    """The current series, as set by a superadmin. Falls back to the
+    ACTIVE_EVENT_SERIES setting until a series has been made current."""
+    current = await scalar_one_or_none(
+        session, select(EventSeries).where(EventSeries.is_current)
+    )
+    if current:
+        return current.slug
+    return settings.active_event_series or ""
+
+
+async def series_names(session: AsyncSession) -> dict[str, str]:
+    """Map of series slug -> display name."""
+    return {s.slug: s.name for s in await scalar_all(session, select(EventSeries))}

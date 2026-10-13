@@ -286,3 +286,13 @@
   font-style: normal;
   font-display: swap;
 }
+
+/* Neither theme sets daisyUI's --border/--depth, which makes the toggle's width
+   calc() invalid (collapsing it to a 6px sliver) and leaves unchecked radios and
+   checkboxes with no visible outline. Scoped so other components keep their look. */
+.toggle,
+.radio,
+.checkbox {
+  --border: 1px;
+  --depth: 1;
+}
