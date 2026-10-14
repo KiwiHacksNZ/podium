@@ -312,6 +312,10 @@ test.describe('Ranked ballot', () => {
 				{ timeout: 15000 }
 			);
 			await attendeePage.getByRole('button', { name: 'Submit vote' }).click();
+			// The confirm step lists the ballot before it's cast
+			const confirm = attendeePage.getByRole('dialog');
+			await expect(confirm.getByText(picks[0].name)).toBeVisible();
+			await confirm.getByRole('button', { name: 'Cast ballot' }).click();
 			await voted;
 			await expect(attendeePage.getByText('Vote submitted successfully')).toBeVisible({
 				timeout: 10000

@@ -228,7 +228,47 @@
   async function pick(event: Event) {
     await goTo(Number((event.currentTarget as HTMLSelectElement).value));
   }
+
+  // The next project this judge hasn't finished, wrapping round the list
+  const nextUnscored = $derived.by(() => {
+    for (let step = 1; step < projects.length; step++) {
+      const i = (index + step) % projects.length;
+      if (!isScored(projects[i].id)) return i;
+    }
+    return -1;
+  });
+
+  // Keyboard grading: a digit fills the first criterion still empty, so a
+  // judge can type four numbers and move on without reaching for the mouse.
+  const activeCriterion = $derived(
+    draft ? (criteria.find((c) => draft[c.key] === null)?.key ?? null) : null,
+  );
+
+  function onKeydown(e: KeyboardEvent) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const el = e.target as HTMLElement | null;
+    if (el?.closest("input:not([type=radio]), select, textarea, [contenteditable]")) return;
+    if (!project || (allScored && !reviewing)) return;
+    // Arrows already move along a focused star rating
+    if (e.key.startsWith("Arrow") && el?.matches("input[type=radio]")) return;
+
+    if (/^[0-9]$/.test(e.key) && activeCriterion && draft) {
+      e.preventDefault();
+      draft[activeCriterion] = e.key === "0" ? 10 : Number(e.key);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      go(1);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      go(-1);
+    } else if (e.key.toLowerCase() === "n" && nextUnscored !== -1) {
+      e.preventDefault();
+      goTo(nextUnscored);
+    }
+  }
 </script>
+
+<svelte:window onkeydown={onKeydown} />
 
 {#if !isJudge}
   <div role="alert" class="alert alert-warning max-w-2xl mx-auto mt-6">
@@ -301,6 +341,12 @@
       <p class="text-sm font-semibold opacity-70">
         {data.event.name} · {scoredCount} of {projects.length} scored
       </p>
+      <progress
+        class="progress progress-primary w-full"
+        value={scoredCount}
+        max={projects.length}
+        aria-label="Projects scored"
+      ></progress>
       <h1 class="text-3xl sm:text-4xl font-extrabold">Your grades</h1>
       <h2 class="text-xl sm:text-2xl font-bold break-words">{project.name}</h2>
       <TeamMembers {project} />
@@ -373,7 +419,11 @@
 
     <div class="flex flex-col gap-4">
       {#each criteria as criterion (criterion.key)}
-        <section class="judge-criterion-card rounded-box p-5 sm:p-6">
+        <section
+          class="judge-criterion-card rounded-box p-5 sm:p-6 {activeCriterion === criterion.key
+            ? 'ring-2 ring-primary/50'
+            : ''}"
+        >
           <span
             class="judge-criterion-pill inline-flex items-center rounded-full px-3 py-1 text-sm font-extrabold"
           >
@@ -419,6 +469,10 @@
       Grades save automatically once all four are set. You can come back and
       change them any time while judging is open.
     </p>
+    <p class="hidden text-xs opacity-60 -mt-3 sm:block">
+      Keyboard: type 1–9 (0 for 10) to fill the highlighted criterion, &larr;
+      &rarr; to move between projects, N for the next unscored.
+    </p>
     <!-- Manual fallback if an autosave failed (e.g. flaky venue wifi). -->
     {#if saveFailed && complete && dirty && !saving}
       <button class="btn btn-primary btn-block" use:asyncClick={save}
@@ -438,5 +492,13 @@
         use:asyncClick={() => go(1)}>Next</button
       >
     </div>
+    {#if nextUnscored !== -1}
+      <button
+        class="btn btn-outline btn-block"
+        use:asyncClick={() => goTo(nextUnscored)}
+      >
+        Next unscored: {label(projects[nextUnscored])}
+      </button>
+    {/if}
   </div>
 {/if}

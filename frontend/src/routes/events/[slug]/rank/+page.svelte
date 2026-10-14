@@ -41,7 +41,7 @@
   const pickLabel = $derived(
     picksLeft > 0
       ? `Tap to vote ${ordinal(selectedProjects.length)}`
-      : "Ballot full",
+      : `Tap to swap in as ${ordinal(data.toSelect - 1)}`,
   );
 
   const selectedInOrder = $derived(
@@ -50,19 +50,35 @@
       .filter((p): p is (typeof data.projects)[number] => p !== undefined),
   );
 
+  function nameOf(projectId: string): string {
+    return data.projects.find((p) => p.id === projectId)?.name ?? "that project";
+  }
+
   function toggleProjectSelection(projectId: string) {
     if (selectedProjects.includes(projectId)) {
-      // Deselecting is also how you reorder: drop a pick and re-add it later to
-      // move it down the ballot.
       selectedProjects = selectedProjects.filter((id) => id !== projectId);
-    } else {
-      if (selectedProjects.length < data.toSelect) {
-        selectedProjects = [...selectedProjects, projectId];
-      } else {
-        toast.info("Your ballot is full. Tap a pick to remove it first.");
-      }
+    } else if (selectedProjects.length < data.toSelect) {
+      selectedProjects = [...selectedProjects, projectId];
+    } else if (data.toSelect > 0) {
+      // A full ballot swaps out the last pick rather than refusing the tap
+      const last = data.toSelect - 1;
+      const dropped = selectedProjects[last];
+      selectedProjects = [...selectedProjects.slice(0, last), projectId];
+      toast.info(`${nameOf(projectId)} is now your ${ordinal(last)} choice, replacing ${nameOf(dropped)}.`);
     }
   }
+
+  /** Move a pick up (-1) or down (+1) the ballot. */
+  function move(index: number, delta: number) {
+    const target = index + delta;
+    if (target < 0 || target >= selectedProjects.length) return;
+    const next = [...selectedProjects];
+    [next[index], next[target]] = [next[target], next[index]];
+    selectedProjects = next;
+  }
+
+  // One ballot per person, so show exactly what's being cast before it goes
+  let confirmDialog: HTMLDialogElement | undefined = $state();
 
   async function submitVote() {
     const { error: err } = await EventsService.voteEventsVotePost({
@@ -76,6 +92,7 @@
       handleError(err);
       return;
     }
+    confirmDialog?.close();
     toast.success("Vote submitted successfully");
     selectedProjects = [];
     await customInvalidateAll();
@@ -116,8 +133,8 @@
       </h1>
       <p class="mt-2 opacity-90 text-sm">
         Tap projects in the order you like them, favourite first. 1st choice is
-        worth 3 points, 2nd is 2, 3rd is 1. Tap a pick again to remove it and
-        reorder.
+        worth 3 points, 2nd is 2, 3rd is 1. Reorder or remove picks in your
+        ballot below.
       </p>
       <p class="mt-3 font-bold">
         {data.toSelect - selectedProjects.length} pick{data.toSelect -
@@ -171,6 +188,26 @@
                 {points(index)}
                 {points(index) === 1 ? "pt" : "pts"}
               </span>
+              <span class="join">
+                <button
+                  type="button"
+                  class="btn btn-xs btn-ghost join-item"
+                  aria-label={`Move ${project.name} up`}
+                  disabled={index === 0}
+                  onclick={() => move(index, -1)}
+                >
+                  &uarr;
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-xs btn-ghost join-item"
+                  aria-label={`Move ${project.name} down`}
+                  disabled={index === selectedInOrder.length - 1}
+                  onclick={() => move(index, 1)}
+                >
+                  &darr;
+                </button>
+              </span>
               <button
                 type="button"
                 class="btn btn-xs btn-ghost"
@@ -200,8 +237,50 @@
       <button
         class="btn btn-primary"
         disabled={selectedProjects.length === 0}
-        use:asyncClick={submitVote}>Submit vote</button
+        onclick={() => confirmDialog?.showModal()}>Submit vote</button
       >
     </div>
   </div>
+
+  <dialog class="modal modal-bottom sm:modal-middle" bind:this={confirmDialog}>
+    <div class="modal-box">
+      <h2 class="text-lg font-bold">Cast this ballot?</h2>
+      <ol class="mt-4 flex flex-col gap-2">
+        {#each selectedInOrder as project, index (project.id)}
+          <li class="flex items-baseline gap-3">
+            <span class="w-10 shrink-0 text-sm font-extrabold">{ordinal(index)}</span>
+            <span class="font-semibold break-words grow">
+              {project.name}
+              {#if project.team_name}
+                <span class="font-normal text-base-content/70">· {project.team_name}</span>
+              {/if}
+            </span>
+            <span class="text-sm text-base-content/70 whitespace-nowrap">
+              {points(index)} {points(index) === 1 ? "pt" : "pts"}
+            </span>
+          </li>
+        {/each}
+      </ol>
+      {#if picksLeft > 0}
+        <p class="mt-4 text-sm text-base-content/70">
+          You still have {picksLeft} pick{picksLeft === 1 ? "" : "s"} left. You
+          can come back and add {picksLeft === 1 ? "it" : "them"} later.
+        </p>
+      {/if}
+      <p class="mt-4 text-sm text-base-content/70">
+        Picks can't be changed or reordered once they're cast.
+      </p>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" onclick={() => confirmDialog?.close()}>
+          Keep editing
+        </button>
+        <button type="button" class="btn btn-primary" use:asyncClick={submitVote}>
+          Cast ballot
+        </button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
 {/if}

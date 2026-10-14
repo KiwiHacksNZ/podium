@@ -325,15 +325,16 @@ async def get_event_projects(
             if cached is not None:
                 return cached
 
+    loads = [
+        selectinload(Project.votes),
+        selectinload(Project.owner),
+        selectinload(Project.collaborators),
+    ]
+    if leaderboard:
+        loads.append(selectinload(Project.judge_scores))
     projects = await scalar_all(
         session,
-        select(Project)
-        .where(Project.event_id == event_id)
-        .options(
-            selectinload(Project.votes),
-            selectinload(Project.owner),
-            selectinload(Project.collaborators),
-        ),
+        select(Project).where(Project.event_id == event_id).options(*loads),
     )
 
     # Finalist-only is a ballot concern: it shapes what attendees can rank during
@@ -351,7 +352,19 @@ async def get_event_projects(
 
     if leaderboard:
         projects.sort(key=lambda p: p.leaderboard_key, reverse=True)
-        result = [ProjectPublic.model_validate(p).model_dump() for p in projects]
+        # Celebrate the judges' favourite alongside the popular vote. Only the
+        # flag goes public; judge scores stay with judges and organizers.
+        judged = [p for p in projects if p.judge_count > 0]
+        top_judge_score = max((p.judge_score for p in judged), default=None)
+        result = [
+            ProjectPublic.model_validate(p).model_dump()
+            | {
+                "judges_pick": top_judge_score is not None
+                and p.judge_count > 0
+                and p.judge_score == top_judge_score
+            }
+            for p in projects
+        ]
         if not all_projects:
             await cache_set(cache_key, result, ttl=30)
         return result  # type: ignore[return-value]

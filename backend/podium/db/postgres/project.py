@@ -146,6 +146,8 @@ class ProjectPublic(SQLModel):
     ai_declaration: str = ""
     ai_under_limit: bool | None = None
     is_finalist: bool = False
+    # Set on the closed-event leaderboard only: the judges' top-scored project
+    judges_pick: bool = False
     owner_id: UUID
     owner_display_name: str = ""
     collaborator_display_names: list[str] = []

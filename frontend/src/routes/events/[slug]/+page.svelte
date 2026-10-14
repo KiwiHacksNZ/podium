@@ -45,6 +45,31 @@
   );
   const finalistCount = $derived(data.event.finalist_count ?? 0);
 
+  // The one thing an attendee should do right now, if anything
+  const now = $derived.by((): { text: string; href?: string; cta?: string } | null => {
+    const e = data.event;
+    if (e.owned) return null;
+    const slug = e.slug;
+    if (e.judging_open && isJudge)
+      return { text: "Judging is open.", href: `/events/${slug}/judge`, cta: "Judge projects" };
+    if (e.voting_open && e.partOfEvent)
+      return {
+        text: "Voting is open.",
+        href: `/events/${slug}/rank`,
+        cta: finalistCount > 0 ? "Rank the finalists" : "Vote now",
+      };
+    if (e.phase === "closed")
+      return { text: "Results are out.", href: `/events/${slug}/leaderboard`, cta: "See the leaderboard" };
+    if (!e.partOfEvent) return null;
+    if (e.phase === "submission")
+      return { text: "Submissions are open.", href: "/", cta: "Submit your project" };
+    if (e.phase === "judging")
+      return { text: "Judging is underway. Voting opens once the finalists are picked." };
+    if (e.phase === "voting")
+      return { text: "The finalists are in. Voting opens soon." };
+    return null;
+  });
+
   const accents = {
     primary: { border: "hover:border-primary/60", text: "text-primary" },
     secondary: { border: "hover:border-secondary/60", text: "text-secondary" },
@@ -75,7 +100,18 @@
   {/if}
 {/snippet}
 
-<div class="mx-auto mt-2 grid max-w-3xl grid-cols-1 gap-4 px-4 sm:grid-cols-2">
+{#if now}
+  <div class="mx-auto mt-2 max-w-3xl px-4">
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-box border border-primary/30 bg-base-100 px-5 py-4">
+      <p class="font-semibold">{now.text}</p>
+      {#if now.href}
+        <a href={now.href} class="btn btn-primary btn-sm">{now.cta}</a>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<div class="mx-auto mt-4 grid max-w-3xl grid-cols-1 gap-4 px-4 sm:grid-cols-2">
   {#if data.event.judging_open && isJudge}
     {@render action(
       `/events/${data.event.slug}/judge`,

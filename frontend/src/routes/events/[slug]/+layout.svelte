@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from "$app/state";
-  import { eventStatus } from "$lib/misc";
+  import EventStatus from "$lib/components/EventStatus.svelte";
 
   let { children, data } = $props();
 
@@ -20,7 +20,6 @@
   // Only the event's main page gets the full hero; sub-pages (showcase,
   // ballot, judging, leaderboard) keep a compact header so content is above the fold
   const isEventHome = $derived(page.url.pathname.replace(/\/$/, "") === `/events/${data.event.slug}`);
-  const status = $derived(eventStatus(data.event));
 </script>
 
 {#if isEventHome}
@@ -35,14 +34,14 @@
     {#if data.event.description}
       <p class="mono text-base-content/80">{data.event.description}</p>
     {/if}
-    <span class="badge {status.badge}">{status.label}</span>
+    <EventStatus event={data.event} />
   </div>
 {:else}
   <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 pt-4 pb-2">
     <a href="/events/{data.event.slug}" class="link link-hover text-sm font-semibold text-base-content/80">
       &larr; {data.event.name}
     </a>
-    <span class="badge {status.badge}">{status.label}</span>
+    <EventStatus event={data.event} />
   </div>
 {/if}
 
