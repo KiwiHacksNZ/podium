@@ -69,6 +69,16 @@
               <p data-testid="entry-name" class="truncate font-bold">{project.name}</p>
               <TeamMembers {project} />
               <p class="truncate text-xs text-base-content/60">{voteBreakdown(project.rank_counts)}</p>
+              {#if project.repo || project.demo}
+                <div class="mt-1 flex gap-2">
+                  {#if project.repo}
+                    <a class="btn btn-secondary btn-xs" href={withHttpsIfMissing(project.repo)} target="_blank" rel="noopener noreferrer">Repo</a>
+                  {/if}
+                  {#if project.demo}
+                    <a class="btn btn-primary btn-xs" href={withHttpsIfMissing(project.demo)} target="_blank" rel="noopener noreferrer">Demo</a>
+                  {/if}
+                </div>
+              {/if}
             </div>
             <span class="shrink-0 text-lg font-black"><span data-testid="entry-points">{project.points}</span> <span class="text-xs font-semibold text-base-content/60">pts</span></span>
           </li>
