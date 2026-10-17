@@ -86,7 +86,7 @@
   let validationResult = $state<any>(null); // Store full validation result
   let updateProjectModal: Modal = $state() as Modal;
   let currentStep = $state<WizardStep>("chooseProject");
-  let validationState = $state<"loading" | "success" | "failure">("loading");
+  let validationState = $state<"loading" | "success" | "failure" | "draft">("loading");
   let isInitialized = $state(false);
   let hasAutoValidated = $state(false);
 
@@ -248,6 +248,10 @@
       setStep("chooseProject");
       return;
     }
+    if (project.is_draft) {
+      validationState = "draft";
+      return;
+    }
 
     // Queue background validation
     await validateProject(project.id);
@@ -372,6 +376,11 @@
               <span class="underline">{currentEvent.name}</span>.
             {/if}
           </h2>
+          {#if currentEvent.theme}
+            <p class="mb-6 -mt-2 text-base-content/80">
+              <span class="font-semibold">Theme:</span> {currentEvent.theme}
+            </p>
+          {/if}
 
           <div class="grid grid-cols-1 gap-4">
             <button class="btn btn-primary btn-lg" onclick={goToCreateProject}>
@@ -469,6 +478,29 @@
               </p>
             </div>
           </div>
+        {:else if validationState === "draft"}
+          <div class="text-center py-8 space-y-6">
+            <div>
+              <h1 class="text-3xl font-bold mb-4">Draft saved</h1>
+              <p class="text-base-content/70">
+                "<span class="font-semibold">{userProject()?.name}</span>" isn't submitted yet —
+                judges and voters won't see it until you ship it.
+              </p>
+            </div>
+            <div>
+              <p class="text-sm text-base-content/70 mb-2">Teammates can join with this code:</p>
+              <p class="font-mono text-2xl font-bold tracking-widest">{userProject()?.join_code}</p>
+            </div>
+            <div class="space-y-3">
+              <button
+                class="btn btn-accent btn-lg btn-block sm:btn-wide"
+                onclick={() => updateProjectModal?.openModal()}
+              >
+                Finish & ship
+              </button>
+              <a href="/projects" class="btn btn-outline btn-block sm:btn-wide">Manage team</a>
+            </div>
+          </div>
         {:else if validationState === "success"}
           {@render successScreen()}
         {:else if validationState === "failure"}
@@ -531,5 +563,5 @@
 </div>
 
 {#if userProject()}
-  <UpdateProjectModal preselectedProject={userProject()!} events={flagshipEvents} bind:modal={updateProjectModal} onProjectUpdated={goToValidateProject} />
+  <UpdateProjectModal preselectedProject={userProject()!} events={flagshipEvents} bind:modal={updateProjectModal} onProjectUpdated={handleProjectAction} />
 {/if}

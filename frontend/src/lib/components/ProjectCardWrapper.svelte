@@ -44,7 +44,9 @@
   );
 
   const statusBadge = $derived(
-    project.validation_status === "valid"
+    project.is_draft
+      ? { cls: "badge-ghost", label: "Draft" }
+      : project.validation_status === "valid"
       ? { cls: "badge-success", label: "Valid" }
       : project.validation_status === "warning"
         ? { cls: "badge-warning", label: "Check links" }
@@ -194,9 +196,13 @@
     </div>
 
     <div class="card-actions mt-1 grid grid-cols-3 gap-2">
-      <a href={project.repo} target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary">
-        Repo
-      </a>
+      {#if project.repo}
+        <a href={project.repo} target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary">
+          Repo
+        </a>
+      {:else}
+        <span class="btn btn-sm btn-disabled">Repo</span>
+      {/if}
       {#if project.demo}
         <a href={project.demo} target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">
           Demo
@@ -205,7 +211,7 @@
         <span class="btn btn-sm btn-disabled">Demo</span>
       {/if}
       <button class="btn btn-sm btn-outline" onclick={() => editModal?.openModal()}>
-        Edit
+        {project.is_draft ? "Finish & ship" : "Edit"}
       </button>
     </div>
 
@@ -249,7 +255,9 @@
 <Modal title="Validation Details" bind:this={validationModal}>
   <div class="space-y-4">
     <div class="flex items-center gap-2 mb-2">
-      {#if project.validation_status === "valid"}
+      {#if project.is_draft}
+        <span class="text-base-content/70 text-lg">Draft — hidden from judges and voting until you ship it.</span>
+      {:else if project.validation_status === "valid"}
         <span class="text-success text-lg">Your project looks good</span>
       {:else if project.validation_status === "warning"}
         <span class="text-warning text-lg">Potential issue detected</span>
@@ -263,13 +271,15 @@
     <p class="text-xs text-base-content/50">
       Validation warnings are informational - your project is never blocked.
     </p>
-    <button
-      class="btn btn-sm btn-outline"
-      onclick={triggerRevalidation}
-      disabled={revalidating}
-    >
-      {revalidating ? "Re-validating…" : "Re-validate"}
-    </button>
+    {#if !project.is_draft}
+      <button
+        class="btn btn-sm btn-outline"
+        onclick={triggerRevalidation}
+        disabled={revalidating}
+      >
+        {revalidating ? "Re-validating…" : "Re-validate"}
+      </button>
+    {/if}
   </div>
 </Modal>
 

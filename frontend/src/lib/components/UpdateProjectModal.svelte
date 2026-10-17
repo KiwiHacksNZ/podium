@@ -100,9 +100,10 @@
   //   fetchEvents();
   // });
 
-  async function updateProject() {
+  async function updateProject(ship = false) {
     const payload: ProjectUpdate = {
       ...preselectedProject,
+      ...(ship && { is_draft: false }),
       image_url: withHttpsIfMissing(preselectedProject.image_url),
       demo: withHttpsIfMissing(preselectedProject.demo),
       repo: withHttpsIfMissing(preselectedProject.repo),
@@ -120,7 +121,7 @@
       handleError(err);
       return;
     }
-    toast.success("Project updated successfully");
+    toast.success(ship ? "Project shipped!" : "Project updated successfully");
     await customInvalidateAll();
     localModal.closeModal();
     onProjectUpdated?.();
@@ -271,9 +272,18 @@
           min="0"
         />
 
-        <button class="btn btn-block mt-4 btn-primary" use:asyncClick={updateProject}>
-          Update Project
-        </button>
+        {#if preselectedProject.is_draft}
+          <button class="btn btn-block mt-4 btn-accent" use:asyncClick={() => updateProject(true)}>
+            Ship it!
+          </button>
+          <button class="btn btn-block mt-2 btn-outline" use:asyncClick={() => updateProject()}>
+            Save draft
+          </button>
+        {:else}
+          <button class="btn btn-block mt-4 btn-primary" use:asyncClick={() => updateProject()}>
+            Update Project
+          </button>
+        {/if}
         <button
           class="btn btn-block mt-4 btn-warning"
           type="button"

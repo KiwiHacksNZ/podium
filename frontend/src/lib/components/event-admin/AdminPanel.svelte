@@ -16,6 +16,7 @@
   import AdminLeaderboard from "./AdminLeaderboard.svelte";
   import StageTimeline from "./StageTimeline.svelte";
   import RoundSwitches from "./RoundSwitches.svelte";
+  import EventTheme from "./EventTheme.svelte";
   import JudgesTable from "./JudgesTable.svelte";
   import JudgingPanel from "./JudgingPanel.svelte";
   import JudgingProgress from "./JudgingProgress.svelte";
@@ -195,6 +196,8 @@
           event.require_ai_declaration = updated.require_ai_declaration;
         }}
       />
+
+      <EventTheme {event} />
 
       <!-- Attendees Table -->
       <AttendeesTable {attendees} onRemoveAttendee={removeAttendee} {event} />

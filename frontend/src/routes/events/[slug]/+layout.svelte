@@ -35,6 +35,9 @@
     {#if data.event.description}
       <p class="mono text-base-content/80">{data.event.description}</p>
     {/if}
+    {#if data.event.theme}
+      <p class="text-base-content/80"><span class="font-semibold">Theme:</span> {data.event.theme}</p>
+    {/if}
     <span class="badge {status.badge}">{status.label}</span>
   </div>
 {:else}

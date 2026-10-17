@@ -276,7 +276,8 @@ async def get_judging_progress(
     event = await get_owned_event(
         event_id, user, session, selectinload(Event.judges), selectinload(Event.projects)
     )
-    project_ids = {p.id for p in event.projects}
+    shipped = [p for p in event.projects if not p.is_draft]
+    project_ids = {p.id for p in shipped}
     scores = [
         s
         for s in await scalar_all(
@@ -313,7 +314,7 @@ async def get_judging_progress(
             ProjectCoverage(
                 id=p.id, name=p.name, team_name=p.team_name, judges_scored=per_project[p.id]
             )
-            for p in event.projects
+            for p in shipped
         ),
         key=lambda p: (p.judges_scored, p.name.lower()),
     )
@@ -533,7 +534,7 @@ async def lock_in_finalists(
     projects = await scalar_all(
         session,
         select(Project)
-        .where(Project.event_id == event_id)
+        .where(Project.event_id == event_id, Project.is_draft.is_(False))
         .options(selectinload(Project.judge_scores)),
     )
     scored = [p for p in projects if p.judge_count]
@@ -573,7 +574,7 @@ async def get_event_leaderboard(
     projects = await scalar_all(
         session,
         select(Project)
-        .where(Project.event_id == event_id)
+        .where(Project.event_id == event_id, Project.is_draft.is_(False))
         .options(
             selectinload(Project.votes),
             selectinload(Project.owner),

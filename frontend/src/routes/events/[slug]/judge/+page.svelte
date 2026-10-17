@@ -26,7 +26,7 @@
   type Criterion = "originality" | "technicality" | "theme" | "usability";
   type Draft = Record<Criterion, number | null>;
 
-  const criteria: { key: Criterion; name: string; question: string }[] = [
+  const criteria: { key: Criterion; name: string; question: string }[] = $derived([
     {
       key: "originality",
       name: "Originality",
@@ -40,14 +40,16 @@
     {
       key: "theme",
       name: "Theme",
-      question: "How well does the project fit the event theme?",
+      question: data.event.theme
+        ? `How well does the project fit the theme: "${data.event.theme}"?`
+        : "How well does the project fit the event theme?",
     },
     {
       key: "usability",
       name: "Usability",
       question: "Did you like using it? Could you use it at all?",
     },
-  ];
+  ]);
 
   const isJudge = $derived(
     Boolean(

@@ -53,6 +53,19 @@ class CreateVotes(BaseModel):
     event: UUID
 
 
+def serialize_projects(projects: list[Project]) -> list[dict]:
+    """Serialise projects into the exact shape the leaderboard cache stores.
+
+    `mode="json"` is load-bearing. A plain `model_dump()` leaves UUIDs and
+    datetimes as Python objects; `json.dumps` inside `cache_set` then raises
+    TypeError, `cache_set` catches it and logs a warning nobody reads, and the
+    cache silently never populates — which is exactly what happened in
+    production until this was found under load. It also makes a cache miss
+    return the same shape as a cache hit, which is JSON-decoded.
+    """
+    return [ProjectPublic.model_validate(p).model_dump(mode="json") for p in projects]
+
+
 def request_ip(request: Request) -> str:
     forwarded_for = request.headers.get("x-forwarded-for", "")
     if forwarded_for:
@@ -243,7 +256,7 @@ async def vote(
         project = await scalar_one_or_none(session, stmt)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-        if project.event_id != event.id:
+        if project.event_id != event.id or project.is_draft:
             raise HTTPException(status_code=400, detail="Project is not in the event")
 
         already_voted = await scalar_one_or_none(
@@ -328,7 +341,7 @@ async def get_event_projects(
     projects = await scalar_all(
         session,
         select(Project)
-        .where(Project.event_id == event_id)
+        .where(Project.event_id == event_id, Project.is_draft.is_(False))
         .options(
             selectinload(Project.votes),
             selectinload(Project.owner),
@@ -351,7 +364,7 @@ async def get_event_projects(
 
     if leaderboard:
         projects.sort(key=lambda p: p.leaderboard_key, reverse=True)
-        result = [ProjectPublic.model_validate(p).model_dump() for p in projects]
+        result = serialize_projects(projects)
         if not all_projects:
             await cache_set(cache_key, result, ttl=30)
         return result  # type: ignore[return-value]

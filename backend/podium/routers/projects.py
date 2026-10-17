@@ -332,8 +332,9 @@ async def create_project(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    validate_demo_field(project.demo, event)
-    validate_ai_declaration(project.ai_declaration, project.ai_under_limit, event)
+    if not project.is_draft:
+        validate_demo_field(project.demo, event)
+        validate_ai_declaration(project.ai_declaration, project.ai_under_limit, event)
 
     if user not in event.attendees:
         raise HTTPException(status_code=403, detail="Owner not part of event")
@@ -359,7 +360,8 @@ async def create_project(
     await session.commit()
     await session.refresh(new_project)
 
-    background_tasks.add_task(_run_background_validation, new_project.id)
+    if not new_project.is_draft:
+        background_tasks.add_task(_run_background_validation, new_project.id)
     return {"id": str(new_project.id), "join_code": new_project.join_code}
 
 
@@ -526,20 +528,15 @@ async def update_project(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    validate_demo_field(project_update.demo, event)
-    # Check the declaration as it will be after this update
-    validate_ai_declaration(
-        project_update.ai_declaration
-        if project_update.ai_declaration is not None
-        else project.ai_declaration,
-        project_update.ai_under_limit
-        if project_update.ai_under_limit is not None
-        else project.ai_under_limit,
-        event,
-    )
-
     update_data = project_update.model_dump(exclude_unset=True, exclude_none=True)
+    if update_data.pop("is_draft", None) is False:
+        project.is_draft = False
     project.sqlmodel_update(update_data)
+    # Checked against the project as it will be after this update; nothing is
+    # committed if these raise.
+    if not project.is_draft:
+        validate_demo_field(project.demo, event)
+        validate_ai_declaration(project.ai_declaration, project.ai_under_limit, event)
     # Reset to pending so the UI reflects that re-validation is in progress
     project.validation_status = ValidationStatus.PENDING
     project.validation_message = ""
@@ -547,7 +544,8 @@ async def update_project(
     await session.commit()
     await session.refresh(project)
 
-    background_tasks.add_task(_run_background_validation, project.id)
+    if not project.is_draft:
+        background_tasks.add_task(_run_background_validation, project.id)
     return ProjectPublic.model_validate(project)
 
 
@@ -587,7 +585,7 @@ async def get_project_endpoint(
             selectinload(Project.collaborators),
         ),
     )
-    if not project:
+    if not project or project.is_draft:
         raise HTTPException(status_code=404, detail="Project not found")
     return ProjectPublic.model_validate(project)
 
@@ -611,6 +609,8 @@ async def validate_project(
         raise HTTPException(status_code=404, detail="Project not found")
     if project.owner_id != user.id:
         raise BAD_ACCESS
+    if project.is_draft:
+        return ValidationResult(valid=True, message="Drafts are validated once shipped")
 
     project.validation_status = ValidationStatus.PENDING
     project.validation_message = ""

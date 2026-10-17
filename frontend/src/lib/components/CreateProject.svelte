@@ -74,9 +74,10 @@
     fetchedEvents = true;
   }
 
-  async function createProject() {
+  async function createProject(is_draft = false) {
     const payload: ProjectCreate = {
       ...project,
+      is_draft,
       image_url: withHttpsIfMissing(project.image_url),
       demo: withHttpsIfMissing(project.demo),
       repo: withHttpsIfMissing(project.repo),
@@ -91,7 +92,7 @@
       handleError(err);
       return;
     }
-    toast.success("Project created successfully");
+    toast.success(is_draft ? "Draft saved — invite your team with the join code" : "Project created successfully");
     project = {
       name: "",
       team_name: "",
@@ -147,7 +148,7 @@
   <fieldset class="fieldset">
     <div class="flex items-center gap-2 mb-4">
       <span class="text-sm text-base-content/70"
-        >You can always edit this later!</span
+        >You can always edit this later! Not ready yet? Save a draft to get a join code for your team, then ship it when you're done.</span
       >
     </div>
 
@@ -283,9 +284,16 @@
 
     <button
       class="btn btn-accent btn-lg mt-4 btn-block hover:btn-xl transition-all duration-300"
-      use:asyncClick={createProject}
+      use:asyncClick={() => createProject()}
     >
       Ship it!
+    </button>
+    <button
+      class="btn btn-outline btn-block mt-2"
+      disabled={!project.name.trim() || !project.event_id}
+      use:asyncClick={() => createProject(true)}
+    >
+      Save as draft
     </button>
   </fieldset>
   <!-- </form> -->

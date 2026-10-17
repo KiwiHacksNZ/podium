@@ -52,6 +52,10 @@ class Project(SQLModel, table=True):
     # finalists appear on the attendee ballot.
     is_finalist: bool = Field(default=False)
 
+    # Drafts let a team form (via join code) before the project is ready. They
+    # stay out of the showcase, judging, and voting until the owner ships them.
+    is_draft: bool = Field(default=False)
+
     # Computed field pattern: use @computed_field for derived values.
     # Requires eager-loading the relationship: select(Project).options(selectinload(Project.votes))
     @computed_field  # type: ignore[prop-decorator]
@@ -155,6 +159,7 @@ class ProjectPrivate(ProjectPublic):
     """Private project info - visible to owner and collaborators."""
 
     join_code: str
+    is_draft: bool = False
     collaborator_ids: list[UUID] = []
     hours_spent: int
     event_id: UUID
@@ -171,14 +176,15 @@ class ProjectCreate(SQLModel):
 
     name: str
     team_name: str = Field(default="", max_length=100)
-    repo: str
-    image_url: str
+    repo: str = ""
+    image_url: str = ""
     demo: str = ""
     description: str = ""
     hours_spent: int = 0
     ai_declaration: str = Field(default="", max_length=1000)
     ai_under_limit: bool | None = None
     event_id: UUID
+    is_draft: bool = False
 
 
 class ProjectUpdate(SQLModel):
@@ -193,3 +199,5 @@ class ProjectUpdate(SQLModel):
     hours_spent: int | None = None
     ai_declaration: str | None = Field(default=None, max_length=1000)
     ai_under_limit: bool | None = None
+    # Only False is honoured: a shipped project can't go back to being a draft.
+    is_draft: bool | None = None

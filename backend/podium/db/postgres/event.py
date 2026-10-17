@@ -32,6 +32,8 @@ class Event(SQLModel, table=True):
     name: str = Field(max_length=255)
     slug: str = Field(max_length=50, unique=True, index=True)
     description: str = Field(default="")
+    # The hackathon's theme/prompt — shown to attendees and to judges scoring "theme".
+    theme: str = Field(default="")
 
     # Lifecycle phase — controls visibility, submissions, and the leaderboard.
     # The two judging/voting rounds are switched independently (see below).
@@ -149,6 +151,7 @@ class EventPublic(SQLModel):
     name: str
     slug: str
     description: str
+    theme: str = ""
     phase: str
     demo_links_optional: bool
     require_ysws_pii: bool
@@ -178,6 +181,7 @@ class EventUpdate(SQLModel):
 
     name: str | None = None
     description: str | None = None
+    theme: str | None = None
     phase: str | None = None
     judging_open: bool | None = None
     voting_open: bool | None = None

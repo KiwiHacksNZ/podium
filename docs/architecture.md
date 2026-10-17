@@ -16,8 +16,8 @@ Podium is a judging platform for Kiwihacks hackathons. Attendees select an offic
 Core entities:
 
 - **User** — email, display_name, first_name, is_superadmin, is_admin
-- **Event** — name, slug, phase, judging_open, voting_open, judge_code, feature_flags_csv, repo_validation, demo_validation, require_address
-- **Project** — name, repo, image_url, demo, owner_id, event_id, points, is_finalist, validation_status, validation_message
+- **Event** — name, slug, theme, phase, judging_open, voting_open, judge_code, feature_flags_csv, repo_validation, demo_validation, require_address
+- **Project** — name, repo, image_url, demo, owner_id, event_id, points, is_finalist, is_draft, validation_status, validation_message
 - **Vote** — voter_id, project_id, event_id, rank (unique on voter+project, and on voter+event+rank)
 - **JudgeScore** — judge_id, project_id, event_id, originality/technicality/theme/usability (unique on judge+project)
 - **JudgeCode** — event_id, code (unique), redeemed_at, redeemed_by_id, issued_for_id — single-use codes for printed cards
@@ -43,6 +43,10 @@ Events move through phases in order: `draft` → `submission` → `judging` → 
 The phase controls visibility and the leaderboard, and tells everyone where the event is up to. It does **not** gate the two rounds — those are separate booleans on the event, `judging_open` and `voting_open`, flipped independently from the admin panel's Rounds switches (`PATCH /events/admin/{id}`). Judges can still be scoring while attendees vote, or either round can run on its own.
 
 The phase is changed by the event owner via the admin panel UI or `PATCH /events/admin/{id}`.
+
+## Project Drafts
+
+A project saved as a draft only needs a name. It gets a join code straight away so the team can form, but stays out of the showcase, judging, voting, finalists and ballot sizing until the owner ships it (`PUT /projects/{id}` with `is_draft: false`). Shipping is one-way, and is when the demo requirement and background validation kick in.
 
 ## Event Series
 

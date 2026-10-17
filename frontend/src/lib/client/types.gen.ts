@@ -50,6 +50,7 @@ export type EventPrivate = {
     name: string;
     slug: string;
     description: string;
+    theme?: string;
     phase: string;
     demo_links_optional: boolean;
     require_ysws_pii: boolean;
@@ -76,6 +77,7 @@ export type EventPublic = {
     name: string;
     slug: string;
     description: string;
+    theme?: string;
     phase: string;
     demo_links_optional: boolean;
     require_ysws_pii: boolean;
@@ -107,6 +109,7 @@ export type EventSeriesPublic = {
 export type EventUpdate = {
     name?: (string | null);
     description?: (string | null);
+    theme?: (string | null);
     phase?: (string | null);
     judging_open?: (boolean | null);
     voting_open?: (boolean | null);
@@ -260,6 +263,7 @@ export type PastEvent = {
     name: string;
     slug: string;
     description: string;
+    theme?: string;
     phase: string;
     demo_links_optional: boolean;
     require_ysws_pii: boolean;
@@ -288,14 +292,15 @@ export type ProjectCoverage = {
 export type ProjectCreate = {
     name: string;
     team_name?: string;
-    repo: string;
-    image_url: string;
+    repo?: string;
+    image_url?: string;
     demo?: string;
     description?: string;
     hours_spent?: number;
     ai_declaration?: string;
     ai_under_limit?: (boolean | null);
     event_id: string;
+    is_draft?: boolean;
 };
 
 /**
@@ -318,6 +323,7 @@ export type ProjectPrivate = {
     owner_display_name?: string;
     collaborator_display_names?: Array<(string)>;
     join_code: string;
+    is_draft?: boolean;
     collaborator_ids?: Array<(string)>;
     hours_spent: number;
     event_id: string;
@@ -361,6 +367,7 @@ export type ProjectUpdate = {
     hours_spent?: (number | null);
     ai_declaration?: (string | null);
     ai_under_limit?: (boolean | null);
+    is_draft?: (boolean | null);
 };
 
 export type RedeemJudgeCode = {
@@ -382,6 +389,7 @@ export type ReferralResponse = {
 export type SuperadminEventUpdate = {
     name?: (string | null);
     description?: (string | null);
+    theme?: (string | null);
     phase?: (string | null);
     judging_open?: (boolean | null);
     voting_open?: (boolean | null);

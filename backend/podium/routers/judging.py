@@ -253,7 +253,7 @@ async def list_projects_to_judge(
     projects = await scalar_all(
         session,
         select(Project)
-        .where(Project.event_id == event_id)
+        .where(Project.event_id == event_id, Project.is_draft.is_(False))
         .options(selectinload(Project.owner), selectinload(Project.collaborators))
         # Judges find projects by team, so group named teams first, A-Z
         .order_by(Project.team_name == "", Project.team_name, Project.name),
@@ -314,7 +314,7 @@ async def score_project(
     )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    if project.event_id != event_id:
+    if project.event_id != event_id or project.is_draft:
         raise HTTPException(status_code=400, detail="Project is not in the event")
     if judge.id == project.owner_id or judge in project.collaborators:
         raise HTTPException(
@@ -371,7 +371,7 @@ async def judging_results(
     projects = await scalar_all(
         session,
         select(Project)
-        .where(Project.event_id == event_id)
+        .where(Project.event_id == event_id, Project.is_draft.is_(False))
         .options(
             selectinload(Project.judge_scores),
             selectinload(Project.owner),
