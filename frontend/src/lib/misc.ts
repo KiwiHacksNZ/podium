@@ -192,5 +192,6 @@ export function memberNames(project: {
   const names = (
     project.member_names ?? [project.owner_display_name, ...(project.collaborator_display_names ?? [])]
   ).filter((n): n is string => Boolean(n && n.trim()));
+  // ListFormat handles the "and" before the last name, no manual joining.
   return new Intl.ListFormat("en-NZ", { style: "long", type: "conjunction" }).format(names);
 }
