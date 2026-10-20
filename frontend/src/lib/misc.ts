@@ -235,6 +235,7 @@ export function leaderboardPlaces(
 /** "1st", "2nd", "3rd", "4th", "11th", "22nd" */
 export function placeLabel(place: number): string {
   const tens = place % 100;
+  // 11th, 12th, 13th break the 1st/2nd/3rd rule, so catch them first.
   if (tens >= 11 && tens <= 13) return `${place}th`;
   return `${place}${["th", "st", "nd", "rd"][place % 10] ?? "th"}`;
 }
